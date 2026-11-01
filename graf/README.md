@@ -6,7 +6,8 @@
 | `examples*.js` | 249 эталонных примеров (каждый начинается строкой `# проверяет: …`) |
 | `shell.html`, `build.py` | галерея; `python3 build.py` собирает `konspekt_v8.html` |
 | `etalon/NNN.svg`, `etalon/manifest.json` | эталонные рисунки и подсказки |
-| `tests/run.js` | приёмочные тесты: сверка с эталоном + геометрия + типографика |
+| `tests/run.js` | приёмочные тесты: сверка с эталоном, совпадение Node и браузера, геометрия, типографика |
+| `tests/node.mjs` | те же примеры, нарисованные в Node без браузера |
 | `tests/geo.js`, `tests/typo.js` | геометрическая и типографская проверки |
 
 ```bash
@@ -17,4 +18,4 @@ npm run etalon:update    # переснять эталон — только по
 
 Эталон — закон поведения библиотеки (ТЗ библиотеки, принцип Б2). Прототип, с которого он снят, сохранён в `docs/history/prototypes/v8_engine.js`.
 
-Рисунки зависят от метрик шрифта. Шрифты — **PT Sans** и **PT Mono** (ПараТайп, лицензия SIL OFL 1.1), лежат в `fonts/`. Эталон снят в Chromium на Linux; запасные шрифты для знаков, которых нет в PT Sans, — Inter и DejaVu Sans. Набор закреплён в `tests/fonts/fonts.conf`.
+Шрифты — **PT Sans** и **PT Mono** (ПараТайп, лицензия SIL OFL 1.1), лежат в `fonts/`. С этапа 2 ширина текста считается по таблицам метрик (`src/text/metrics.js`), поэтому рисунок не зависит от машины. Таблицы собирает `npm run metrics`: ширины и кернинг PT — из файлов шрифтов, запасные знаки (Inter, DejaVu Sans) — замером в Chromium с набором шрифтов эталона `tests/fonts/fonts.conf`. Сверить таблицы с браузером: `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/check_metrics.mjs`.

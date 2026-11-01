@@ -27,3 +27,8 @@ of G. A. Gulenkov. Extended version and implementation: S. N. Vesnin.
 Redistributions and derivative works must retain this attribution
 (Apache License 2.0, Section 4(d)).
 Independent project; not affiliated with DrakonHub or Drakon.Tech.
+
+src/text/metrics.js contains glyph advance widths and kerning values derived from
+PT Sans and PT Mono (ParaType, SIL OFL 1.1) and advance widths of fallback glyphs
+from Inter (SIL OFL 1.1) and DejaVu Sans (Bitstream Vera Fonts license); no glyph
+outlines are included.

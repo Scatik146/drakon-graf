@@ -7,10 +7,10 @@ const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=pr
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
   svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`};}));
 await b.close();
-// Допуск: в PT Sans нет греческих букв, стрелок, знаков ∠ ⊥ ∈ и индексов ⁿ ₀ — их рисуют запасные шрифты,
-// которые на разных машинах округляют ширину по-разному (до 3 px в строке с несколькими такими знаками). Библиотека считает ширины по встроенным
-// таблицам и набирает формулы KaTeX, поэтому там допуск не нужен. Рисунок совпадает, если весь текст и все фигуры
-// те же, а каждое число отличается не больше чем на TOL px.
+// Допуск. Эталон снят прототипом, который мерил текст браузером; библиотека (этап 2) меряет по таблицам
+// метрик, и на 25 примерах координаты сдвигаются на 0,1–0,7 px (индексы и степени из запасных шрифтов).
+// Таблицы не зависят от машины, поэтому результат один и тот же везде. Рисунок совпадает, если весь текст
+// и все фигуры те же, а каждое число отличается не больше чем на TOL px.
 const TOL=3.0;const NUM=/-?\d+(?:\.\d+)?/g;
 const close=(a,b)=>{if(a.replace(NUM,'#')!==b.replace(NUM,'#'))return false;const x=a.match(NUM)||[],y=b.match(NUM)||[];
   return x.length===y.length&&x.every((v,i)=>Math.abs(v-y[i])<=TOL);};
@@ -30,10 +30,14 @@ const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
 console.log('Примеров:',man.length,'| эталон:',old.count);
 console.log('Рисунок отличается от эталона:',diff.length);diff.forEach(x=>console.log('  ',x));diffAt.slice(0,5).forEach(x=>console.log('   ≠',x));
-if(near.length)console.log('Сдвиг меньше '+TOL+' px (шрифты машины, допустимо):',near.length,near.join(' '));
+if(near.length)console.log('Сдвиг меньше '+TOL+' px (таблицы метрик против замера прототипа, допустимо):',near.length,near.join(' '));
 console.log('Подсказки отличаются от эталона:',wdiff.length);wdiff.forEach(x=>console.log('  ',x));
 if(miss.length){console.log('Нет в эталоне:',miss.length);miss.forEach(x=>console.log('  ',x));}
+// Этап 2: те же рисунки в Node, без браузера, должны совпасть с браузерными до байта (ТЗ 8.3)
+const nd=JSON.parse(execSync('node '+JSON.stringify(path.join(__dirname,'node.mjs')),{maxBuffer:1<<28}).toString());
+const ndiff=all.filter((e,i)=>nd[i].svg!==e.svg||JSON.stringify(nd[i].warns)!==JSON.stringify(e.warns)).map(e=>String(e.i).padStart(3,'0'));
+console.log('Node (без браузера) отличается от браузера:',ndiff.length,ndiff.slice(0,10).join(' '));
 console.log('\n— Геометрия —');console.log(execSync('node '+JSON.stringify(path.join(__dirname,'geo.js'))+' '+JSON.stringify(path.join(__dirname,'geo_last.json'))).toString().split('\n').slice(0,12).join('\n'));
 console.log('— Типографика —');const ty=execSync('node '+JSON.stringify(path.join(__dirname,'typo.js'))).toString();
 console.log(ty.split('\n').filter(l=>/^## (prepEnd|unitSplit|hyphenMinus|small|dashStart)/.test(l)).join('\n'));
-process.exitCode=(diff.length||wdiff.length||miss.length)?1:0;})();
+process.exitCode=(diff.length||wdiff.length||miss.length||ndiff.length)?1:0;})();
