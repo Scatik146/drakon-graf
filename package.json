@@ -31,7 +31,8 @@
   },
   "devDependencies": {
     "esbuild": "0.28.2",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "markdown-it": "14.2.0"
   },
   "dependencies": {
     "mathjax": "4.1.3",
