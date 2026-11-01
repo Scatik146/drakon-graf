@@ -1,0 +1,26 @@
+name: Загрузка пакетов MathJax (служебная ветка)
+on:
+  push:
+    branches: [deps-fetch]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    if: "!contains(github.event.head_commit.message, '[deps]')"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          mkdir -p vendor && cd vendor
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund mathjax@4.1.3 @mathjax/mathjax-asana-font@4.1.3
+          du -sh node_modules/* node_modules/@mathjax/*
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -f vendor/node_modules vendor/package.json
+          git commit -q -m "[deps] mathjax 4.1.3 + asana font"
+          git push
