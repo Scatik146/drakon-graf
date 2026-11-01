@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const CH=['⇒','⊥','∠','∈','∪','⊂','ₙ','⁻','·','А'];
 (async()=>{const b=await chromium.launch();const p=await b.newPage();
-await p.setContent('<body>'+['normal','bold'].map(w=>CH.map((c,i)=>`<span id="s${w}${i}" style="font:${w} 14px Arial, Helvetica, sans-serif">${c}</span>`).join(' ')).join('<br>')+'<svg><text id="t" font-family="Arial, Helvetica, sans-serif" font-size="14">⇒</text></svg></body>');
+await p.setContent('<body>'+['normal','bold'].map(w=>CH.map((c,i)=>`<span id="s${w}${i}" style="font:${w} 14px PT Sans, sans-serif">${c}</span>`).join(' ')).join('<br>')+'<svg><text id="t" font-family="PT Sans, sans-serif" font-size="14">⇒</text></svg></body>');
 const cdp=await p.context().newCDPSession(p);await cdp.send('DOM.enable');await cdp.send('CSS.enable');
 const {root}=await cdp.send('DOM.getDocument');
 for(const w of ['normal','bold'])for(let i=0;i<CH.length;i++){const {nodeId}=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector:`#s${w}${i}`});

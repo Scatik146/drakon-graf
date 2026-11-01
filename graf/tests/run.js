@@ -5,7 +5,7 @@ const {chromium}=require('playwright');const fs=require('fs'),path=require('path
 const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=process.argv.includes('--update');
 (async()=>{const b=await chromium.launch();const p=await b.newPage();await p.goto('file://'+path.join(ROOT,'konspekt_v8.html'));
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
-  svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`};}));
+  svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`};}));
 await b.close();
 // Допуск: запасные шрифты (⇒ ⊥ ∠ ∈) на разных машинах дают ширину с точностью до долей пикселя.
 // Рисунок совпадает, если весь текст и все фигуры те же, а каждое число отличается не больше чем на TOL px.
@@ -21,7 +21,7 @@ for(const e of all){const f=String(e.i).padStart(3,'0')+'.svg';const h=crypto.cr
     // расхождение: сохранить рисунок и показать первое отличие
     const DD=path.join(__dirname,'diff');fs.mkdirSync(DD,{recursive:true});fs.writeFileSync(path.join(DD,f),e.svg);
     let k=0;while(k<old.length&&old[k]===e.svg[k])k++;diffAt.push(f+': эталон «'+old.slice(Math.max(0,k-60),k+60)+'»\n      сейчас «'+e.svg.slice(Math.max(0,k-60),k+60)+'»');}}
-if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8',date:'2026-10-30',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
+if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.1',date:'2026-11-01',fonts:'PT Sans +1 px, PT Mono',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
 const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
 console.log('Примеров:',man.length,'| эталон:',old.count);

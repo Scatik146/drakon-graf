@@ -7,7 +7,7 @@
 const PAL={color:{line:'#993300',fill:'#FFFF99',orange:'#FFCC66',mark:'#CC6600',tie:'#FF9933',ex:'#FFFFFF',exb:'#333333',code:'#F6F3EA',codeb:'#C9BFA6',sep:'#D8C8A8'},
   bw:{line:'#222222',fill:'#E6E6E6',orange:'#C8C8C8',mark:'#444444',tie:'#666666',ex:'#FFFFFF',exb:'#000000',code:'#F2F2F2',codeb:'#999999',sep:'#BBBBBB'}};
 const C={...PAL.color};
-let FS=13, LH=16;const MONO='Consolas, "Courier New", monospace', SANS='Arial, Helvetica, sans-serif';
+let FS=14, LH=17;const MONO='"PT Mono", monospace', SANS='"PT Sans", sans-serif'; /* шрифты ПараТайп (OFL), см. fonts/ */
 let WARN=[];
 const cx2d=document.createElement('canvas').getContext('2d');
 function tw(t,bold,size,mono){cx2d.font=(bold?'bold ':'')+(size||FS)+'px '+(mono?MONO:SANS);return cx2d.measureText(t).width;}
@@ -818,7 +818,7 @@ function render(src,W,ro={}){
   WARN=[];NUM=1;Object.assign(C,ro.bw?PAL.bw:PAL.color);LSTYLE=ro.labels||'auto';STRICT=ro.strict!==undefined?!!ro.strict:true;NUMNEAR=ro.numNear!==undefined?!!ro.numNear:true; /* v8: вариант Б и номера у блока — основные */
   const gopts={};src.split('\n').forEach(l=>{const m=normKw(l.trim()).match(OPT);if(m&&m[1]!=='схема')gopts[m[1]]=m[2].trim();});
   if(gopts['ширина'])W=parseInt(gopts['ширина'])||W;
-  {const cl=parseInt(gopts['класс']||'0');FS=!cl?13:cl<=6?14:cl<=9?13:12;LH=FS+3;} // кегль по классу (СанПиН: младшим крупнее)
+  {const cl=parseInt(gopts['класс']||'0');FS=!cl?14:cl<=6?15:cl<=9?14:13;LH=FS+3;} // кегль по классу (СанПиН: младшим крупнее)
   if(gopts['начать с'])NUM=parseInt(gopts['начать с'])||1;
   const zones=src.split(/^\s*-{3,}\s*$/m);let y=0,svg='',schemes=[],warns=[];
   zones.forEach((z,i)=>{const r=renderZone(z,W,gopts);if(!r)return;

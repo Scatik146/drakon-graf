@@ -7,7 +7,7 @@
 <style>
   :root{--bg:#f4f1ea;--ink:#222;--muted:#6b6457;--acc:#993300}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "PT Sans",sans-serif}
   header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;background:#fff;border-bottom:2px solid var(--acc);position:sticky;top:0;z-index:2}
   header b{color:var(--acc);font-size:16px}
   header label{display:flex;gap:6px;align-items:center;color:var(--muted)}
@@ -16,7 +16,7 @@
   button.on{background:var(--acc);color:#fff}
   main{display:grid;grid-template-columns:minmax(300px,38%) 1fr;gap:12px;padding:12px}
   @media (max-width:900px){main{grid-template-columns:1fr}}
-  textarea{width:100%;height:calc(100vh - 110px);min-height:300px;font:13px/1.45 Consolas,"Courier New",monospace;padding:10px;border:1px solid #ccc;border-radius:6px;resize:vertical;tab-size:2}
+  textarea{width:100%;height:calc(100vh - 110px);min-height:300px;font:13px/1.45 "PT Mono",monospace;padding:10px;border:1px solid #ccc;border-radius:6px;resize:vertical;tab-size:2}
   .card{background:#fff;border:1px solid #ddd;border-radius:6px;padding:12px;overflow:auto}
   .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
   .warn{margin-top:8px;font-size:13px}
@@ -26,7 +26,7 @@
   #gallery h2{color:var(--acc);margin:28px 0 8px;font-size:20px;border-bottom:1px solid #d9c9a8}
   .gi{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin:10px 0 18px}
   @media (max-width:900px){.gi{grid-template-columns:1fr}}
-  .gi pre{margin:0;background:#fffdf6;border:1px solid #e3d8bf;border-radius:6px;padding:8px;font:12px/1.4 Consolas,monospace;white-space:pre-wrap;overflow:auto}
+  .gi pre{margin:0;background:#fffdf6;border:1px solid #e3d8bf;border-radius:6px;padding:8px;font:12px/1.4 "PT Mono",monospace;white-space:pre-wrap;overflow:auto}
   .gi h3{grid-column:1/-1;margin:0;font-size:15px}
   svg .memo-t{transition:opacity .2s}
   svg.selfcheck .memo-t{opacity:0}
@@ -77,7 +77,7 @@ function fillSel(){sel.innerHTML='';let og=null,last='';const list=SORTED.filter
     const o=document.createElement('option');o.value=e.i;o.textContent=e.t;og.appendChild(o);});
   $('cnt').textContent=list.length+' из '+EXAMPLES.length;return list;}
 let svgText='';
-const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`;
+const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`;
 const warnHtml=w=>w&&w.length?w.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="ok">Замечаний нет</div>';
 function one(src,W,strict,cls){const r=render(src,W,{bw:$('bw').checked,strict:!!strict});return{r,svg:svgOf(r,W,cls)};}
 function update(){

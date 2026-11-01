@@ -15,6 +15,10 @@ Copyright 2026 Сергей Николаевич Веснин
 
 Независимый проект; не связан с DrakonHub и Drakon.Tech.
 
+Шрифты PT Sans и PT Mono — © ПараТайп (ParaType Inc.), авторы А. Королькова,
+О. Умпелева, В. Ефимов; распространяются по лицензии SIL Open Font License 1.1
+(тексты лицензии — graf/fonts/OFL_*.txt).
+
 ---
 DRAKON-GRAF — an extended version of the GRAF language.
 The original GRAF language was created by V. D. Parondzhanov.
