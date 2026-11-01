@@ -1,6 +1,6 @@
 {
   "name": "drakon-graf",
-  "version": "0.8.0",
+  "version": "0.9.0-dev",
   "private": true,
   "description": "ДРАКОН-ГРАФ — расширенная версия языка ГРАФ В. Д. Паронджанова: текстовое описание → графический конспект (SVG)",
   "license": "Apache-2.0",
@@ -9,14 +9,27 @@
     "В. Д. Паронджанов — создатель оригинального языка ГРАФ",
     "Г. А. Гуленков — инициатор и участник разработки языка ГРАФ"
   ],
-  "keywords": ["drakon", "graf", "конспект", "паронджанов", "диаграммы", "образование", "svg"],
-  "repository": { "type": "git", "url": "https://github.com/Scatik146/drakon-graf.git" },
+  "keywords": [
+    "drakon",
+    "graf",
+    "конспект",
+    "паронджанов",
+    "диаграммы",
+    "образование",
+    "svg"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Scatik146/drakon-graf.git"
+  },
   "scripts": {
-    "build": "python3 graf/build.py",
-    "test": "python3 graf/build.py && node graf/tests/run.js",
-    "etalon:update": "python3 graf/build.py && node graf/tests/run.js --update"
+    "bundle": "node tools/bundle.mjs",
+    "build": "node tools/bundle.mjs && python3 graf/build.py",
+    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js",
+    "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "playwright": "1.63.0"
   }
 }

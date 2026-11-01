@@ -3,3 +3,4 @@ graf/konspekt_v8.html
 graf/tests/geo_last.json
 .DS_Store
 graf/tests/diff/
+dist/
