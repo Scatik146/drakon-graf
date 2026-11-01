@@ -57,7 +57,7 @@
     "metrics": "FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/build_metrics.mjs",
     "bundle": "node tools/bundle.mjs",
     "build": "node tools/bundle.mjs && python3 graf/build.py",
-    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs",
+    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs && node graf/tests/en.mjs",
     "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update",
     "prepack": "node tools/prepack.mjs"
   },

@@ -9,6 +9,7 @@ import { chooseScheme } from './schemes.js';
 import { S, freshState } from './state.js';
 import { plain } from './text/math.js';
 import { METRICS } from './text/metrics.js';
+import { normKw } from './parse/lexer.js';
 
 export const version = '0.9.0';
 
@@ -64,7 +65,7 @@ function fontStyle(body, mode, url) {
 }
 
 // ── Описание для экранных дикторов ─────────────────────────────────────────────────────────
-const SERVICE = /^\s*(#|(класс|class|схема|scheme|ширина|width|начать с|подписи|labels)\s*:)/i;
+const SERVICE = /^\s*(#|(класс|схема|ширина|начать с|нумерация|язык|подписи)\s*:)/i; // строки уже приведены к русским ключевым словам (normKw)
 function readable(line) {
   const t = plain(line).replace(/\[([^\]]*)\]\{([^}]*)\}/g, '$1 ($2)').replace(/[-]/g, '')
     .replace(/^\s*(=>|⇒)\s*/, 'следовательно, ').replace(/\s*(=>|⇒)\s*/g, ', следовательно, ')
@@ -80,15 +81,16 @@ export function render(text, opts = {}) {
   if (typeof opts === 'number') opts = { width: opts };
   const W = opts.width || 680;
   let src = String(text ?? '').replace(/\r\n?/g, '\n');
-  if (opts.class && !/^\s*(класс|class)\s*:/im.test(src)) src = `класс: ${opts.class}\n` + src;
+  const ru = src.split('\n').map(l => normKw(l.trim())); // английские команды → русские (таблица 2.1)
+  if (opts.class && !ru.some(l => /^класс\s*:/.test(l))) src = `класс: ${opts.class}\n` + src;
   let r;
   try { r = draw(src, W, { bw: opts.theme === 'bw' }); }
   catch (e) { r = { svg: '', h: 40, scheme: '', warns: ['Внутренняя ошибка рисования: ' + e.message + ' — сообщите авторам библиотеки.'] }; } // ТЗ Б4
-  const wm = src.match(/^\s*(ширина|width)\s*:\s*(\d+)/im); const w = wm ? +wm[2] : W; // строка «ширина:» сильнее настройки
+  const wl = ru.find(l => /^ширина\s*:\s*\d+/.test(l)); const w = wl ? +wl.match(/\d+/)[0] : W; // строка «ширина:» сильнее настройки
   const h = Math.ceil(r.h);
-  const lines = src.split('\n').filter(l => l.trim() && !SERVICE.test(l) && !/^\s*-{3,}\s*$/.test(l));
-  const head = lines.find(l => /^\s*(тема|topic)\s*:/i.test(l));
-  const title = head ? readable(head.replace(/^\s*(тема|topic)\s*:\s*/i, '')) : 'Графический конспект';
+  const lines = src.split('\n').map(l => normKw(l.trim())).filter(l => l && !SERVICE.test(l) && !/^-{3,}$/.test(l));
+  const head = lines.find(l => /^тема\s*:/.test(l));
+  const title = head ? readable(head.replace(/^тема\s*:\s*/, '')) : 'Графический конспект';
   const desc = lines.map(readable).filter(Boolean).join('. '); // текст конспекта по порядку чтения
   const id = 'dg' + (++uid);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="PT Serif, serif" role="img" aria-labelledby="${id}t ${id}d">` +

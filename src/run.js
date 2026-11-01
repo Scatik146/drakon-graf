@@ -6,7 +6,7 @@
 import { render } from './api.js';
 import { ready, mathjaxConfig } from './mathjax.js';
 
-const SEL = 'code.language-конспект, code.language-konspekt, pre.language-конспект, pre.language-konspekt';
+const SEL = ['конспект', 'konspekt', 'drakon-graf'].map(n => `code.language-${n}, pre.language-${n}`).join(', '); // три имени блока
 
 /** Ждёт MathJax (если подключён) и рисует все блоки. Возвращает число нарисованных конспектов. */
 export async function run(opts = {}) {
