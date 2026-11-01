@@ -1,0 +1,19 @@
+name: Эталон ДРАКОН-ГРАФ
+on:
+  push:
+  pull_request:
+jobs:
+  etalon:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - name: Сверка с эталоном, геометрия, типографика
+        run: npm test

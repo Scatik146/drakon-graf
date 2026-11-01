@@ -1,0 +1,25 @@
+ДРАКОН-ГРАФ (drakon-graf) — расширенная версия языка ГРАФ
+Copyright 2026 Сергей Николаевич Веснин
+
+Создатель оригинального языка ГРАФ — В. Д. Паронджанов
+(«Как написать хороший учебник для хороших людей», 2017).
+Язык ГРАФ разработан по инициативе и при активном участии
+Геннадия Алексеевича Гуленкова.
+Расширенная версия языка ГРАФ (текстовая запись, включение ГНОМ и МОЛНИЯ,
+схемы Дерево, Сцена, Шеренга, правила раскладки, эталон) и её реализация —
+С. Н. Веснин.
+
+Любое распространение этого программного обеспечения или произведений
+на его основе, в том числе в коммерческих продуктах, должно сохранять
+указание всех трёх авторов в соответствии с пунктом 4(d) лицензии Apache 2.0.
+
+Независимый проект; не связан с DrakonHub и Drakon.Tech.
+
+---
+DRAKON-GRAF — an extended version of the GRAF language.
+The original GRAF language was created by V. D. Parondzhanov.
+GRAF was developed on the initiative and with the active participation
+of G. A. Gulenkov. Extended version and implementation: S. N. Vesnin.
+Redistributions and derivative works must retain this attribution
+(Apache License 2.0, Section 4(d)).
+Independent project; not affiliated with DrakonHub or Drakon.Tech.

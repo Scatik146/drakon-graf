@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конспект ГРАФ v5</title>
+<style>
+  :root{--bg:#f4f1ea;--ink:#222;--muted:#6b6457;--acc:#993300}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",Arial,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;background:#fff;border-bottom:2px solid var(--acc);position:sticky;top:0;z-index:2}
+  header b{color:var(--acc);font-size:16px}
+  header label{display:flex;gap:6px;align-items:center;color:var(--muted)}
+  select,input,button{font:inherit}
+  button{border:1px solid var(--acc);background:#fff7e0;color:var(--acc);border-radius:6px;padding:3px 10px;cursor:pointer}
+  button.on{background:var(--acc);color:#fff}
+  main{display:grid;grid-template-columns:minmax(300px,38%) 1fr;gap:12px;padding:12px}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  textarea{width:100%;height:calc(100vh - 110px);min-height:300px;font:13px/1.45 Consolas,"Courier New",monospace;padding:10px;border:1px solid #ccc;border-radius:6px;resize:vertical;tab-size:2}
+  .card{background:#fff;border:1px solid #ddd;border-radius:6px;padding:12px;overflow:auto}
+  .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+  .warn{margin-top:8px;font-size:13px}
+  .warn div{padding:4px 8px;border-left:3px solid #d08000;background:#fff8e6;margin:3px 0}
+  .warn div.ok{border-color:#4a9a4a;background:#effaef}
+  #gallery{display:none;padding:12px;max-width:1500px;margin:0 auto}
+  #gallery h2{color:var(--acc);margin:28px 0 8px;font-size:20px;border-bottom:1px solid #d9c9a8}
+  .gi{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin:10px 0 18px}
+  @media (max-width:900px){.gi{grid-template-columns:1fr}}
+  .gi pre{margin:0;background:#fffdf6;border:1px solid #e3d8bf;border-radius:6px;padding:8px;font:12px/1.4 Consolas,monospace;white-space:pre-wrap;overflow:auto}
+  .gi h3{grid-column:1/-1;margin:0;font-size:15px}
+  svg .memo-t{transition:opacity .2s}
+  svg.selfcheck .memo-t{opacity:0}
+  svg.selfcheck .memo.open .memo-t{opacity:1}
+  svg.selfcheck .memo{cursor:pointer}
+  svg.blind text{display:none}
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ab svg{max-width:100%;height:auto}.ab>div{min-width:0}.ab .tag{font-weight:bold;color:var(--acc);margin-bottom:4px}
+  .gi.wide{grid-template-columns:minmax(220px,24%) 1fr}
+  #cnt{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <b>Конспект · ГРАФ v5</b>
+  <label>Предмет <select id="fs"></select></label>
+  <label>Класс <select id="fg"></select></label>
+  <label>Уровень <select id="fl"><option value="">все</option><option value="база">база</option><option value="углубл.">углубл.</option></select></label>
+  <label>Пример <select id="ex"></select></label>
+  <label>Вариант <select id="va"><option value="B">Б — основной (v8)</option><option value="A">А — без правил одной ширины и отбивок</option><option value="AB">А и Б рядом</option></select></label>
+  <span id="cnt"></span>
+  <label>Ширина <input id="w" type="range" min="420" max="900" value="680"></label>
+  <label><input id="sc" type="checkbox"> Самопроверка</label>
+  <label><input id="bl" type="checkbox"> Слепыш</label>
+  <label><input id="bw" type="checkbox"> Ч/б печать</label>
+  <button id="gal">Галерея всех примеров</button>
+  <button id="dl">Скачать SVG</button>
+</header>
+<main id="editor">
+  <textarea id="src" spellcheck="false"></textarea>
+  <section><div class="card"><div class="meta" id="meta"></div><div id="pic"></div></div><div class="warn" id="warn"></div></section>
+</main>
+<div id="gallery"></div>
+<script>/*ENGINE*/</script>
+<script>/*EXAMPLES*/</script>
+<script>
+const $=id=>document.getElementById(id);
+const SUBJ=['Математика','Алгебра','Геометрия','ВиС','Информатика','Физика'];
+EXAMPLES.forEach((e,i)=>{e.i=i;const m=e.g.match(/^(Математика|Алгебра|Геометрия|ВиС|Информатика|Физика) (\d+)( \(углубл\.\))?$/);
+  if(m){e.subj=m[1];e.grade=+m[2];e.lvl=m[3]?'углубл.':'база';e.gl=`${m[1]} ${m[2]} · ${e.lvl}`;}else{e.subj=e.g;e.grade=0;e.lvl='';e.gl=e.g;}});
+const ORDER=e=>{const k=SUBJ.indexOf(e.subj);return [k<0?99:k,e.grade,e.lvl==='углубл.'?1:0,e.i];};
+const SORTED=[...EXAMPLES].sort((a,b)=>{const x=ORDER(a),y=ORDER(b);for(let q=0;q<4;q++)if(x[q]!==y[q])return x[q]-y[q];return 0;});
+const sel=$('ex');
+{const subs=[...new Set(SORTED.map(e=>e.subj))];$('fs').innerHTML='<option value="">все</option>'+subs.map(x=>`<option>${esc(x)}</option>`).join('');
+ const gr=[...new Set(SORTED.filter(e=>e.grade).map(e=>e.grade))].sort((a,b)=>a-b);$('fg').innerHTML='<option value="">все</option>'+gr.map(x=>`<option>${x}</option>`).join('');}
+const pass=e=>(!$('fs').value||e.subj===$('fs').value)&&(!$('fg').value||e.grade==+$('fg').value)&&(!$('fl').value||e.lvl===$('fl').value);
+function fillSel(){sel.innerHTML='';let og=null,last='';const list=SORTED.filter(pass);
+  list.forEach(e=>{if(e.gl!==last){og=document.createElement('optgroup');og.label=e.gl;sel.appendChild(og);last=e.gl;}
+    const o=document.createElement('option');o.value=e.i;o.textContent=e.t;og.appendChild(o);});
+  $('cnt').textContent=list.length+' из '+EXAMPLES.length;return list;}
+let svgText='';
+const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`;
+const warnHtml=w=>w&&w.length?w.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="ok">Замечаний нет</div>';
+function one(src,W,strict,cls){const r=render(src,W,{bw:$('bw').checked,strict:!!strict});return{r,svg:svgOf(r,W,cls)};}
+function update(){
+  const W=+$('w').value;const va=$('va').value;const cls=($('sc').checked?'selfcheck ':'')+($('bl').checked?'blind':'');
+  try{if(va==='AB'){const a=one($('src').value,W,false,cls),b=one($('src').value,W,true,cls);svgText=b.svg;
+      $('pic').innerHTML=`<div class="ab"><div><div class="tag">А</div>${a.svg}</div><div><div class="tag">Б</div>${b.svg}</div></div>`;$('meta').textContent='Схема: '+a.r.scheme;$('warn').innerHTML=warnHtml(a.r.warns);}
+    else{const a=one($('src').value,W,va==='B',cls);svgText=a.svg;$('pic').innerHTML=svgText;$('meta').textContent='Схема: '+a.r.scheme+' · вариант '+(va==='B'?'Б':'А');$('warn').innerHTML=warnHtml(a.r.warns);}}
+  catch(e){$('pic').innerHTML='<pre>'+esc(e.stack)+'</pre>';$('meta').textContent='ОШИБКА';}
+}
+sel.onchange=()=>{$('src').value=EXAMPLES[sel.value].s;update();};
+['src','w','sc','bl','bw','va'].forEach(id=>$(id).addEventListener('input',()=>{update();if($('gallery').style.display==='block')gallery();}));
+['fs','fg','fl'].forEach(id=>$(id).addEventListener('input',()=>{const l=fillSel();if(l.length){sel.value=l[0].i;$('src').value=l[0].s;update();}if($('gallery').style.display==='block')gallery();}));
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml'}));a.download='konspekt.svg';a.click();};
+function gallery(){const va=$('va').value;const W=va==='AB'?Math.min(+$('w').value,560):+$('w').value;let h='',g='';
+  SORTED.filter(pass).forEach(e=>{const i=e.i;if(e.gl!==g){h+=`<h2>${esc(e.gl)}</h2>`;g=e.gl;}let body;
+    try{if(va==='AB'){const a=one(e.s,W,false),b=one(e.s,W,true);
+        body=`<div class="card"><div class="meta">Схема: ${esc(a.r.scheme)}</div><div class="ab"><div><div class="tag">А</div>${a.svg}</div><div><div class="tag">Б</div>${b.svg}</div></div><div class="warn">${warnHtml(a.r.warns)}</div></div>`;}
+      else{const a=one(e.s,W,va==='B');body=`<div class="card"><div class="meta">Схема: ${esc(a.r.scheme)}</div>${a.svg}<div class="warn">${warnHtml(a.r.warns)}</div></div>`;}}
+    catch(err){body=`<div class="card"><pre>${esc(err.stack)}</pre></div>`;}
+    h+=`<div class="gi${va==='AB'?' wide':''}" id="g${i}"><h3>${esc(e.t)}</h3><pre>${esc(e.s)}</pre>${body}</div>`;});
+  $('gallery').innerHTML=h;}
+$('gal').onclick=()=>{const on=$('gallery').style.display!=='block';$('gallery').style.display=on?'block':'none';$('editor').style.display=on?'none':'grid';$('gal').classList.toggle('on',on);$('gal').textContent=on?'Вернуться к редактору':'Галерея всех примеров';if(on)gallery();};
+{const l=fillSel();sel.value=l[0].i;$('src').value=l[0].s;update();}
+window.__test=(i,W,bw,strict)=>{const r=render(EXAMPLES[i].s,W||680,{bw,strict});return{t:EXAMPLES[i].g+' / '+EXAMPLES[i].t,scheme:r.scheme,warns:r.warns,svg:svgOf(r,W||680)};};
+window.__n=EXAMPLES.length;
+</script>
+</body>
+</html>
