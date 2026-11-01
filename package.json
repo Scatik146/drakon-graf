@@ -26,7 +26,7 @@
     "metrics": "FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/build_metrics.mjs",
     "bundle": "node tools/bundle.mjs",
     "build": "node tools/bundle.mjs && python3 graf/build.py",
-    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js",
+    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs",
     "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update"
   },
   "devDependencies": {
@@ -36,5 +36,13 @@
   "dependencies": {
     "mathjax": "4.1.3",
     "@mathjax/mathjax-asana-font": "4.1.3"
+  },
+  "bin": {
+    "drakon-graf": "bin/drakon-graf.mjs"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./markdown-it": "./src/markdown-it.js",
+    "./dist/*": "./dist/*"
   }
 }

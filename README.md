@@ -49,7 +49,33 @@ npm run build   # собрать галерею graf/konspekt_v8.html
 
 Шрифты: текст — **PT Serif**, код — **PT Mono** (ПараТайп), формулы и математические знаки — **Asana Math**; все три под лицензией SIL OFL 1.1 и лежат в `graf/fonts`. Принцип проекта: где возможно — российские разработки, иначе — свободные проверенные международные; и чем меньше шрифтов, тем лучше. Ширину текста библиотека считает по таблицам метрик (`src/text/metrics.js`), поэтому рисунок не зависит от машины, а сверка с эталоном точная, до байта. Геометрическая проверка смотрит на нарисованные знаки, поэтому её запускают со шрифтами эталона: `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf` (так делает автопроверка GitHub). Пересборка таблиц: `npm run metrics`.
 
-Библиотека строится по [ТЗ 0.9](docs/library/ТЗ_библиотеки_0.9.md): выполнены этапы 1 (модули), 2 (таблицы метрик, рисование в Node без браузера) и 3 (формулы через MathJax 4 со шрифтом Asana Math); следующий — обвязка: `run()`, плагин markdown-it, командная строка.
+Библиотека строится по [ТЗ 0.9](docs/library/ТЗ_библиотеки_0.9.md): выполнены этапы 1 (модули), 2 (таблицы метрик, рисование в Node без браузера) и 3 (формулы через MathJax 4 со шрифтом Asana Math); 4 (обвязка: `run()`, плагин markdown-it, командная строка, страница примеров `demo/`); следующий — выпуск пакета 0.9.0.
+
+## Как подключить (до выпуска в npm — из репозитория)
+
+```html
+<pre><code class="language-конспект">тема: Деление с остатком
+правило → остаток: Остаток всегда меньше делителя.
+пример: [17]{делимое} = [5]{делитель} · [3]{неполное частное} + [2]{остаток}</code></pre>
+
+<script src="dist/drakon-graf.js"></script>
+<script>window.MathJax = drakonGraf.mathjaxConfig('node_modules/mathjax', 'node_modules/@mathjax/mathjax-asana-font');</script>
+<script src="node_modules/@mathjax/mathjax-asana-font/tex-mml-svg-mathjax-asana.js"></script>
+<script>drakonGraf.run({ hints: true });</script>
+```
+
+```js
+import { render, ready } from './src/index.js';      // Node
+await ready();                                        // MathJax для формул
+const { svg, hints } = render(text, { width: 680, class: 7 });
+```
+
+```bash
+node bin/drakon-graf.mjs урок.md -o рисунки/          # все блоки «конспект» → SVG
+node bin/drakon-graf.mjs --check урок.md              # только подсказки
+```
+
+Живой пример — `demo/index.html`.
 
 ## Лицензия
 

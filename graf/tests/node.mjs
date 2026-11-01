@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { render, ready } from '../../src/index.js';
+import { _render as render, ready } from '../../src/index.js';
 await ready(); // MathJax 4 + Asana Math (этап 3)
 const G = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = ['examples.js', 'examples_hs.js', 'examples_v4.js', 'examples_v5a.js', 'examples_v5b.js'];

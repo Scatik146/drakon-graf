@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ДРАКОН-ГРАФ: примеры</title>
+<style>
+  :root{--bg:#fbf7ee;--ink:#222;--acc:#7a4a00;--card:#fff;--line:#e3d8bf}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "PT Serif",serif}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  h1{color:var(--acc);font-size:26px;margin:12px 0 4px} h2{color:var(--acc);font-size:19px;margin:28px 0 6px}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font:13px/1.45 "PT Mono",monospace}
+  figure.drakon-graf{margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px}
+  .dg-hint{font-size:14px;color:#8a5a00}.dg-important{color:#a00}
+  .src{font-size:14px;color:#666}
+</style>
+</head>
+<body>
+<main>
+<h1>ДРАКОН-ГРАФ: примеры</h1>
+<p>Каждый блок ниже написан обычным текстом в <code>&lt;pre&gt;&lt;code class="language-конспект"&gt;</code>. Его рисует одна строка: <code>drakonGraf.run()</code>.</p>
+
+<h2>Правило с разбором формулы</h2>
+<pre><code class="language-конспект">тема: Деление с остатком
+правило → остаток: Остаток всегда меньше делителя.
+пример: [17]{делимое} = [5]{делитель} · [3]{неполное частное} + [2]{остаток}</code></pre>
+
+<h2>Формулы</h2>
+<pre><code class="language-конспект">тема: Квадратное уравнение
+класс: 8
+правило: Корни $x_{1,2}=\frac{-b\pm\sqrt{D}}{2a}$, где $D=b^2-4ac$.
+  $$x_1 + x_2 = -\frac{b}{a}, \quad x_1 x_2 = \frac{c}{a}$$
+пример: $x^2-5x+6=0$, $D=1$, $x_1=2$, $x_2=3$</code></pre>
+
+<h2>Запоминатели (ГНОМ)</h2>
+<pre><code class="language-конспект">тема: Части речи
+Существительное -> Это часть речи, которая обозначает предмет.
+Прилагательное -> Это часть речи, которая обозначает признак предмета.
+Глагол -> Это часть речи, которая обозначает действие предмета.</code></pre>
+
+<h2>Очная ставка</h2>
+<pre><code class="language-конспект">тема: Не путать: НОД и НОК
+НОД — наибольший общий делитель. НОД(12, 18) = 6 >< НОК — наименьшее общее кратное. НОК(12, 18) = 36</code></pre>
+
+<h2>С подсказкой</h2>
+<pre><code class="language-конспект">тема: Пара без половины.
+Дробь ><</code></pre>
+<p class="src">Подсказки показываются под рисунком (<code>run({ hints: true })</code>).</p>
+</main>
+<!-- библиотека и MathJax 4 со шрифтом Asana Math; после выпуска — с CDN: https://cdn.jsdelivr.net/npm/drakon-graf/… -->
+<script src="../dist/drakon-graf.js"></script>
+<script>window.MathJax = drakonGraf.mathjaxConfig('../node_modules/mathjax', '../node_modules/@mathjax/mathjax-asana-font');</script>
+<script src="../node_modules/@mathjax/mathjax-asana-font/tex-mml-svg-mathjax-asana.js"></script>
+<script>window.__done = drakonGraf.run({ hints: true, fontsUrl: '../graf/fonts/' });</script>
+</body>
+</html>
