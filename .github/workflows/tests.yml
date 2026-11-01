@@ -15,5 +15,9 @@ jobs:
           python-version: '3.12'
       - run: npm install
       - run: npx playwright install --with-deps chromium
+      - name: Шрифты эталона (Liberation, DejaVu, Inter)
+        run: sudo apt-get install -y --no-install-recommends fonts-liberation fonts-dejavu-core fonts-inter
       - name: Сверка с эталоном, геометрия, типографика
+        env:
+          FONTCONFIG_FILE: ${{ github.workspace }}/graf/tests/fonts/fonts.conf
         run: npm test
