@@ -17,7 +17,7 @@ const res=await p.evaluate((only)=>{window.DBG=only!=null;
   const contains=(R,r,t=0.5)=>r.x>=R.x-t&&r.y>=R.y-t&&r.x+r.w<=R.x+R.w+t&&r.y+r.h<=R.y+R.h+t;
   const ptIn=(pt,r,m=0)=>pt[0]>=r.x-m&&pt[0]<=r.x+r.w+m&&pt[1]>=r.y-m&&pt[1]<=r.y+r.h+m;
   EXAMPLES.forEach((e,idx)=>{if(only!=null&&idx!==only)return;const r=render(e.s,680,{strict:true});
-    host.innerHTML=`<svg xmlns="${NS}" width="680" height="${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`;
+    host.innerHTML=`<svg xmlns="${NS}" width="680" height="${Math.ceil(r.h)}" font-family="PT Serif, serif">${r.svg}</svg>`;
     const svg=host.firstChild;const tag=idx+' '+e.g+' / '+e.t;const iss=[];
     const SR=svg.getBoundingClientRect();const box=el=>{const bb=el.getBBox();const m=el.getCTM();return{x:bb.x*m.a+m.e,y:bb.y*m.d+m.f,w:bb.width*m.a,h:bb.height*m.d};};
     const abs=(el,x,y)=>{const m=el.getCTM();const pt=svg.createSVGPoint();pt.x=x;pt.y=y;const r2=pt.matrixTransform(m);return[r2.x,r2.y];};

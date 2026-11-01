@@ -5,7 +5,7 @@ const {chromium}=require('playwright');const fs=require('fs'),path=require('path
 const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=process.argv.includes('--update');
 (async()=>{const b=await chromium.launch();const p=await b.newPage();await p.goto('file://'+path.join(ROOT,'konspekt_v8.html'));
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
-  svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`};}));
+  svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Serif, serif">${r.svg}</svg>`};}));
 await b.close();
 // Эталон v8.2 снят библиотекой с таблицами метрик: рисунок не зависит от машины, поэтому сверка точная.
 // Механизм допуска оставлен на случай будущих осознанных изменений; сейчас TOL = 0.
@@ -23,7 +23,7 @@ for(const e of all){const f=String(e.i).padStart(3,'0')+'.svg';const h=crypto.cr
     let why;if(old.replace(NUM,'#')===e.svg.replace(NUM,'#')){const x=old.match(NUM),y=e.svg.match(NUM);why='структура та же, наибольший сдвиг '+Math.max(...x.map((v,i)=>Math.abs(v-y[i]))).toFixed(1)+' px';}
     else{const ta=old.match(/>[^<]+</g)||[],tb=e.svg.match(/>[^<]+</g)||[];const i=ta.findIndex((t,j)=>t!==tb[j]);why='структура другая (текстов '+ta.length+' → '+tb.length+')'+(i>=0?': «'+ta[i]+'» → «'+tb[i]+'»':'');}
     diffAt.push(f+': '+why);}}
-if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.2',date:'2026-11-01',fonts:'PT Sans +1 px, PT Mono; ширины по таблицам метрик',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
+if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.3',date:'2026-11-01',fonts:'PT Serif, Asana Math, PT Mono; ширины по таблицам метрик',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
 const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
 console.log('Примеров:',man.length,'| эталон:',old.count);

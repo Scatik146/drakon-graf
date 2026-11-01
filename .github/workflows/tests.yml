@@ -18,8 +18,8 @@ jobs:
           python-version: '3.12'
       - run: npm install
       - run: npx playwright install --with-deps chromium
-      - name: Запасные шрифты эталона (DejaVu, Inter; PT Sans и PT Mono — в репозитории)
-        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-inter
+      - name: Запасной шрифт DejaVu Sans (PT Serif, PT Mono, Asana Math — в репозитории)
+        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
       - name: Сверка с эталоном, геометрия, типографика
         env:
           FONTCONFIG_FILE: ${{ github.workspace }}/graf/tests/fonts/fonts.conf

@@ -7,7 +7,7 @@
 <style>
   :root{--bg:#f4f1ea;--ink:#222;--muted:#6b6457;--acc:#993300}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "PT Sans",sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "PT Serif",serif}
   header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;background:#fff;border-bottom:2px solid var(--acc);position:sticky;top:0;z-index:2}
   header b{color:var(--acc);font-size:16px}
   header label{display:flex;gap:6px;align-items:center;color:var(--muted)}
@@ -78,7 +78,7 @@ function fillSel(){sel.innerHTML='';let og=null,last='';const list=SORTED.filter
     const o=document.createElement('option');o.value=e.i;o.textContent=e.t;og.appendChild(o);});
   $('cnt').textContent=list.length+' из '+EXAMPLES.length;return list;}
 let svgText='';
-const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`;
+const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="PT Serif, serif">${r.svg}</svg>`;
 const warnHtml=w=>w&&w.length?w.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="ok">Замечаний нет</div>';
 function one(src,W,strict,cls){const r=render(src,W,{bw:$('bw').checked,strict:!!strict});return{r,svg:svgOf(r,W,cls)};}
 function update(){

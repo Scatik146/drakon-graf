@@ -1,7 +1,7 @@
 // ДРАКОН-ГРАФ — ширина текста по таблицам метрик (этап 2).
 // Не зависит от браузера: одна и та же строка имеет одну ширину в Chrome, Firefox, Node и Windows (ТЗ, Б3).
-// Повторяет набор Chromium: ширины знаков PT Sans, кернинг GPOS, лигатуры fi/fl;
-// знаки, которых нет в PT Sans, — по ширинам запасных шрифтов эталона.
+// Повторяет набор Chromium: ширины знаков PT Serif, кернинг GPOS, лигатуры fi/fl;
+// знаки, которых нет в PT Serif, — по ширинам Asana Math (и DejaVu Sans для ᵏ ₙ ✗).
 import { S } from '../state.js';
 import { METRICS } from './metrics.js';
 

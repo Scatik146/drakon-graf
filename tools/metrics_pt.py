@@ -1,9 +1,9 @@
-"""Таблицы метрик PT Sans / PT Mono для движка ДРАКОН-ГРАФ (этап 2).
+"""Таблицы метрик PT Serif / PT Mono для движка ДРАКОН-ГРАФ (этап 2).
 Ширина знака и кернинг (GPOS kern, как у HarfBuzz) — из файлов шрифтов graf/fonts.
 Выход: JSON на stdout (собирает tools/build_metrics.mjs)."""
 import json,sys
 from fontTools.ttLib import TTFont
-F={'r':'graf/fonts/PT_Sans-Web-Regular.ttf','b':'graf/fonts/PT_Sans-Web-Bold.ttf','m':'graf/fonts/PTM55FT.ttf'}
+F={'r':'graf/fonts/PT_Serif-Web-Regular.ttf','b':'graf/fonts/PT_Serif-Web-Bold.ttf','m':'graf/fonts/PTM55FT.ttf'}
 # знаки, для которых строится таблица кернинга: латиница, кириллица, цифры, пунктуация.
 # Обычный пробел исключён: Chromium набирает текст по словам, и кернинг через пробел не действует.
 KSET=[chr(c) for c in range(0x21,0x7f)]+[chr(c) for c in range(0xa0,0x100)]+[chr(c) for c in range(0x410,0x450)]+['Ё','ё']+list('–—‘’‚“”„…«»№‹›−×÷±·°')
@@ -58,6 +58,6 @@ def cmapset(paths):
     for f in paths:
         for f2 in glob.glob(f):st|=set(TTFont(f2).getBestCmap())
     return ''.join(chr(c) for c in sorted(st) if c>=0x20)
-out['fbset']={'sans':cmapset(['/usr/share/fonts/opentype/inter/Inter-Regular.otf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']),
+out['fbset']={'sans':cmapset(['graf/fonts/Asana-Math.otf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']),
               'mono':cmapset(['/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'])}
 json.dump(out,sys.stdout,ensure_ascii=False)

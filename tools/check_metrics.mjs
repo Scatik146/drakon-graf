@@ -14,9 +14,9 @@ const seen = new Map(); for (const c of twLog.calls) seen.set(JSON.stringify(c),
 const calls = [...seen.values()];
 const { tw } = await import('../src/text/measure.js');
 const b = await pw.chromium.launch(); const p = await b.newPage();
-await p.setContent('<p style="font-family:\'PT Sans\'">а<b>а</b></p><p style="font-family:\'PT Mono\'">а</p>');
+await p.setContent('<p style="font-family:\'PT Serif\'">а<b>а</b></p><p style="font-family:\'PT Mono\'">а</p>');
 const bw = await p.evaluate(cs => { const c = document.createElement('canvas').getContext('2d');
-  return cs.map(([t, bold, size, mono]) => { c.font = (bold ? 'bold ' : '') + size + 'px ' + (mono ? '"PT Mono", monospace' : '"PT Sans", sans-serif'); return c.measureText(t).width; }); }, calls);
+  return cs.map(([t, bold, size, mono]) => { c.font = (bold ? 'bold ' : '') + size + 'px ' + (mono ? '"PT Mono", monospace' : '"PT Serif", serif'); return c.measureText(t).width; }); }, calls);
 await b.close();
 const d = calls.map((c, i) => ({ c, br: bw[i], tb: tw(...c), e: Math.abs(bw[i] - tw(...c)) })).sort((x, y) => y.e - x.e);
 console.log('строк:', calls.length, '| расхождение > 0,01 px:', d.filter(x => x.e > 0.01).length, '| > 0,1 px:', d.filter(x => x.e > 0.1).length, '| наибольшее:', d[0].e.toFixed(4));
