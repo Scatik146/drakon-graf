@@ -7,9 +7,11 @@ const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=pr
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
   svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Sans, sans-serif">${r.svg}</svg>`};}));
 await b.close();
-// Допуск: запасные шрифты (⇒ ⊥ ∠ ∈) на разных машинах дают ширину с точностью до долей пикселя.
-// Рисунок совпадает, если весь текст и все фигуры те же, а каждое число отличается не больше чем на TOL px.
-const TOL=1.0;const NUM=/-?\d+(?:\.\d+)?/g;
+// Допуск: в PT Sans нет греческих букв, стрелок, знаков ∠ ⊥ ∈ и индексов ⁿ ₀ — их рисуют запасные шрифты,
+// которые на разных машинах округляют ширину по-разному (до 1,5 px). Библиотека считает ширины по встроенным
+// таблицам и набирает формулы KaTeX, поэтому там допуск не нужен. Рисунок совпадает, если весь текст и все фигуры
+// те же, а каждое число отличается не больше чем на TOL px.
+const TOL=2.0;const NUM=/-?\d+(?:\.\d+)?/g;
 const close=(a,b)=>{if(a.replace(NUM,'#')!==b.replace(NUM,'#'))return false;const x=a.match(NUM)||[],y=b.match(NUM)||[];
   return x.length===y.length&&x.every((v,i)=>Math.abs(v-y[i])<=TOL);};
 const man=[];let diff=[],miss=[],diffAt=[],near=[];
