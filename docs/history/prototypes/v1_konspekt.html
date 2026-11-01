@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конспект: прототип</title>
+<style>
+  :root{--bg:#f4f1ea;--panel:#fff;--ink:#222;--muted:#6b6457;--acc:#993300}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",Arial,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#fff;border-bottom:2px solid var(--acc)}
+  header b{color:var(--acc);font-size:16px}
+  header label{display:flex;gap:6px;align-items:center;color:var(--muted)}
+  select,input,button{font:inherit}
+  button{border:1px solid var(--acc);background:#fff7e0;color:var(--acc);border-radius:6px;padding:3px 10px;cursor:pointer}
+  main{display:grid;grid-template-columns:minmax(300px,38%) 1fr;gap:12px;padding:12px}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  textarea{width:100%;height:calc(100vh - 110px);min-height:300px;font:13px/1.45 Consolas,"Courier New",monospace;padding:10px;border:1px solid #ccc;border-radius:6px;resize:vertical;tab-size:2}
+  #out{background:var(--panel);border:1px solid #ddd;border-radius:6px;padding:12px;overflow:auto}
+  #warn{margin-top:10px;font-size:13px}
+  #warn div{padding:4px 8px;border-left:3px solid #d08000;background:#fff8e6;margin:3px 0}
+  #warn div.ok{border-color:#4a9a4a;background:#effaef}
+  #meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+  svg .memo-t{transition:opacity .2s}
+  svg.selfcheck .memo-t{opacity:0}
+  svg.selfcheck .memo.open .memo-t{opacity:1}
+  svg.selfcheck .memo{cursor:pointer}
+  svg.blind text{display:none}
+</style>
+</head>
+<body>
+<header>
+  <b>Конспект: ГНОМ · ГРАФ · МОЛНИЯ</b>
+  <label>Пример <select id="ex"></select></label>
+  <label>Ширина <input id="w" type="range" min="420" max="900" value="680"></label>
+  <label><input id="sc" type="checkbox"> Самопроверка</label>
+  <label><input id="bl" type="checkbox"> Слепыш</label>
+  <button id="dl">Скачать SVG</button>
+</header>
+<main>
+  <textarea id="src" spellcheck="false"></textarea>
+  <section>
+    <div id="out"><div id="meta"></div><div id="pic"></div></div>
+    <div id="warn"></div>
+  </section>
+</main>
+<script>
+"use strict";
+/* ============ общие средства рисования ============ */
+const C={line:'#993300',fill:'#FFFF99',orange:'#FFCC66',mark:'#CC6600',tie:'#FF9933',
+  mbg:'#8FD3F5',mbox:'#D4EEFB',mink:'#1d1d1d',mcall:'#FFFF99',mcallb:'#8A6D00'};
+const FS=13, LH=16, FONT=FS+'px Arial, Helvetica, sans-serif';
+const cx2d=document.createElement('canvas').getContext('2d');
+function tw(t,bold,size){cx2d.font=(bold?'bold ':'')+(size||FS)+'px Arial, Helvetica, sans-serif';return cx2d.measureText(t).width;}
+function pretty(s){ // «невидимая математика» для прототипа; в программе — KaTeX
+  return String(s).replace(/\$([^$]+)\$/g,(m,f)=>f.replace(/\^2/g,'²').replace(/\^3/g,'³').replace(/sqrt/g,'√')
+   .replace(/<=/g,'≤').replace(/>=/g,'≥').replace(/!=/g,'≠').replace(/\*/g,'·').replace(/pi/g,'π'));
+}
+function wrap(text,maxW,bold,size){
+  const words=pretty(text).split(/\s+/).filter(Boolean);const out=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;if(tw(t,bold,size)<=maxW||!cur)cur=t;else{out.push(cur);cur=w;}}
+  if(cur)out.push(cur);return out.length?out:[''];
+}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function txt(lines,x,y,o={}){ // y — верх первой строки
+  const a=o.anchor||'start',sz=o.size||FS,lh=o.lh||LH;
+  return lines.map((l,i)=>`<text x="${x.toFixed(1)}" y="${(y+i*lh+sz-2).toFixed(1)}" font-size="${sz}" text-anchor="${a}"${o.bold?' font-weight="bold"':''}${o.italic?' font-style="italic"':''} fill="${o.fill||'#111'}">${esc(l)}</text>`).join('');
+}
+const L=(x1,y1,x2,y2,c,w)=>`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c||C.line}" stroke-width="${w||1.5}"/>`;
+const rect=(x,y,w,h,f,s,rx,sw)=>`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx||0}" fill="${f}" stroke="${s||C.line}" stroke-width="${sw||1.5}"/>`;
+function memoRect(x,y,w,h){return rect(x+2,y+2,w,h,C.line,C.line)+rect(x,y,w,h,C.fill);}
+function pointerPath(x,y,w,h,f,s){const d=Math.min(14,h/2);return `<path d="M${x},${y}H${x+w-d}L${x+w},${y+h/2}L${x+w-d},${y+h}H${x}Z" fill="${f||C.fill}" stroke="${s||C.line}" stroke-width="1.5"/>`;}
+function counterPath(x,y,w,h){const d=Math.min(14,h/2);return `<path d="M${x+d},${y}H${x+w}V${y+h}H${x+d}L${x},${y+h/2}Z" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/>`;}
+function headerEllipse(x,y,w,h){const cx=x+w/2,cy=y+h/2;
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${w/2}" ry="${h/2}" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/><ellipse cx="${cx}" cy="${cy}" rx="${w/2-4}" ry="${h/2-3}" fill="none" stroke="${C.line}" stroke-width="1.2"/>`;}
+function ellY(x,ex,ey,ew,eh,bottom){const cx=ex+ew/2,cy=ey+eh/2,rx=ew/2,ry=eh/2;const k=Math.max(0,1-((x-cx)/rx)**2);return cy+(bottom?1:-1)*ry*Math.sqrt(k);}
+// клин выноски: основание на кромке выноски, остриё в цели
+function wedge(b1x,b1y,b2x,b2y,ax,ay,f,s){
+  return `<path d="M${b1x},${b1y}L${ax},${ay}L${b2x},${b2y}" fill="${f}" stroke="${s}" stroke-width="1.2"/>`+L(b1x+(b2x-b1x)*0.08,b1y+(b2y-b1y)*0.08,b2x-(b2x-b1x)*0.08,b2y-(b2y-b1y)*0.08,f,2.6);
+}
+function blockArrow(cx,y,w,h,up,f,s){ // фигурная стрелка
+  const sw=w*0.45,hh=h*0.5;
+  if(up) return `<path d="M${cx-sw/2},${y+h}V${y+hh}H${cx-w/2}L${cx},${y}L${cx+w/2},${y+hh}H${cx+sw/2}V${y+h}" fill="${f||C.fill}" stroke="${s||C.line}" stroke-width="1.5"/>`;
+  return `<path d="M${cx-sw/2},${y}V${y+hh}H${cx-w/2}L${cx},${y+h}L${cx+w/2},${y+hh}H${cx+sw/2}V${y}" fill="${f||C.fill}" stroke="${s||C.line}" stroke-width="1.5"/>`;
+}
+
+/* ============ разбор текста блока «конспект» ============ */
+const OPT=/^(схема|ширина|профиль|начать с|нумерация|класс)\s*[:=]\s*(.+)$/i;
+const KINDS='теорема|свойство|признак|следствие|формула|аксиома|алгоритм|правило|закон|метод';
+function lowerFirst(s){return s.length>1&&/[а-яёa-z]/.test(s[1])?s[0].toLowerCase()+s.slice(1):s;}
+function classify(t){
+  let m;
+  if(m=t.match(OPT))return{kind:'opt',key:m[1].toLowerCase(),val:m[2].trim()};
+  if(m=t.match(/^тема\s*:\s*(.*)$/i))return{kind:'header',text:m[1]};
+  if(m=t.match(/^связка\s*:\s*(.*)$/i))return{kind:'link',parts:m[1].split('|').map(s=>s.trim())};
+  if(m=t.match(/^двойная\s+стрелка\s*:\s*(.*)$/i))return{kind:'arrow2',text:m[1]};
+  if(m=t.match(/^стрелка\s*:\s*(.*)$/i))return{kind:'arrow',text:m[1]};
+  if(m=t.match(/^(выноска|пример|уточнение|пояснение)(?:\s+(снизу|справа))?\s*:\s*(.*)$/i))
+    return{kind:'callout',title:/пример/i.test(m[1])?'Пример':'',square:/уточнение/i.test(m[1]),pos:(m[2]||'').toLowerCase(),text:m[3]};
+  if(t.includes('><')){const [a,b]=t.split('><');return{kind:'pair',left:a.trim(),right:(b||'').trim()};}
+  if(m=t.match(/^(?:[-–]\s+)?(.*?)\s*(?:->|→)\s*(.*)$/)){
+    let left=m[1].trim(),def=false,mm;
+    if(mm=left.match(/^(?:опр|определение)\s*:\s*(.+)$/i)){def=true;const term=mm[1].trim();
+      left=term.split(/\s+/).length<=2?'Что такое '+lowerFirst(term):term;}
+    else if(mm=left.match(new RegExp('^('+KINDS+')\\s*:\\s*(.+)$','i'))){left=mm[1][0].toUpperCase()+mm[1].slice(1).toLowerCase()+' '+mm[2].trim();}
+    return{kind:'memo',pointer:left,text:m[2].trim(),def};
+  }
+  if(m=t.match(/^[-–]\s+(.*)$/))return{kind:'item',text:m[1]};
+  if(m=t.match(/^[*•]\s+(.*)$/))return{kind:'marker',text:m[1]};
+  if(m=t.match(/^\|\s?(.*)$/))return{kind:'bar',text:m[1]};
+  if(m=t.match(/^\}\s*(.*)$/))return{kind:'brace',text:m[1]};
+  if(m=t.match(/^\$\$(.*)\$\$$/))return{kind:'formula',text:m[1]};
+  return{kind:'text',text:t};
+}
+function parse(src){
+  const root={kind:'root',children:[],indent:-1},stack=[root],opts={};
+  for(const raw of src.replace(/\t/g,'    ').split('\n')){
+    if(/^\s*#/.test(raw))continue;
+    const t=raw.trim();
+    if(!t){const top=stack[stack.length-1];if(top!==root)top.children.push({kind:'blank',children:[]});continue;}
+    const ind=raw.match(/^ */)[0].length;
+    while(stack[stack.length-1].indent>=ind)stack.pop();
+    const n=classify(t);n.indent=ind;n.children=[];
+    if(n.kind==='opt'){opts[n.key]=n.val;continue;}
+    stack[stack.length-1].children.push(n);stack.push(n);
+  }
+  // текст/пункт с детьми-пунктами = группа
+  // пустая строка «><» между двумя списками маркеров = пара списков
+  {const k=root.children,out=[];for(let i=0;i<k.length;i++){const c=k[i];
+    if(c.kind==='pair'&&!c.left&&!c.right&&!c.children.length){const lz=[];while(out.length&&out[out.length-1].kind==='marker')lz.unshift(out.pop());
+      const rz=[];while(i+1<k.length&&k[i+1].kind==='marker')rz.push(k[++i]);
+      c.lz=lz.map(m=>({t:'m',text:m.text}));c.rz=rz.map(m=>({t:'m',text:m.text}));}
+    out.push(c);}root.children=out;}
+  (function fix(node,depth){for(const c of node.children){fix(c,depth+1);
+    if((c.kind==='text'||c.kind==='item')&&c.children.some(k=>['item','text','group'].includes(k.kind)))c.kind='group';
+    else if(c.kind==='text'&&node.kind==='root')c.kind='item';}})(root,0);
+  return{root,opts};
+}
+// содержимое мнемоблока
+function content(node){
+  const z=[];if(node.text)z.push({t:'p',text:node.text});
+  let gap=false;
+  for(const c of node.children){
+    if(c.kind==='blank'){gap=true;continue;}
+    if(c.kind==='text'){const last=z[z.length-1];if(last&&last.t==='p'&&!gap)last.text+=' '+c.text;else z.push({t:'p',text:c.text,gap});}
+    else if(c.kind==='marker'||c.kind==='item')z.push({t:'m',text:c.text,gap});
+    else if(c.kind==='bar')z.push({t:'bar',text:c.text,gap});
+    else if(c.kind==='formula')z.push({t:'f',text:c.text,gap});
+    else if(c.kind==='brace'){const items=[];while(z.length&&z[z.length-1].t==='m')items.unshift(z.pop());z.push({t:'brace',items,text:c.text,gap});}
+    gap=false;
+  }
+  return z;
+}
+/* мнемоблок с богатым содержимым */
+function rich(z,w,o={}){
+  const P=8,parts=[];let h=P;
+  const iw=w-2*P-(o.padL||0)-(o.padR||0),x0=P+(o.padL||0);
+  const add=(f,hh)=>{const off=h;parts.push((x,y)=>f(x,y+off));h+=hh+4;};
+  for(const it of z){
+    if(it.gap)h+=6;
+    if(it.t==='p'){const ls=wrap(it.text,iw,o.bold);add((x,y)=>txt(ls,x+x0+(o.center?iw/2:0),y,{anchor:o.center?'middle':'start',bold:o.bold}),ls.length*LH);}
+    else if(it.t==='m'){const ls=wrap(it.text,iw-14);add((x,y)=>`<circle cx="${x+x0+4}" cy="${y+7}" r="4.2" fill="${C.mark}"/>`+txt(ls,x+x0+14,y),ls.length*LH);}
+    else if(it.t==='bar'){const ls=wrap(it.text,iw-12);const hh=ls.length*LH;add((x,y)=>L(x+x0+2,y+1,x+x0+2,y+hh-1,'#333',2)+txt(ls,x+x0+10,y),hh);}
+    else if(it.t==='f'){const ls=wrap('$'+it.text+'$',iw-20,true,15);const hh=ls.length*19+14;add((x,y)=>rect(x+x0,y,iw,hh,'#fff',C.line,0,2)+txt(ls,x+x0+iw/2,y+7,{anchor:'middle',bold:true,size:15,lh:19}),hh);}
+    else if(it.t==='brace'){const lw=iw*0.55;let hh=0;const rows=it.items.map(m=>{const ls=wrap(m.text,lw-14);const r={ls,y:hh};hh+=ls.length*LH;return r;});
+      const rl=wrap(it.text,iw-lw-22);hh=Math.max(hh,rl.length*LH);
+      add((x,yy)=>{const bx=x+x0+lw+2;let s=rows.map(r=>`<circle cx="${x+x0+4}" cy="${yy+r.y+7}" r="4.2" fill="${C.mark}"/>`+txt(r.ls,x+x0+14,yy+r.y)).join('');
+        const y1=yy+1,y2=yy+hh-1,ym=(y1+y2)/2;
+        s+=`<path d="M${bx},${y1}q6,0 6,6V${ym-5}q0,5 6,5q-6,0 -6,5V${y2-6}q0,6 -6,6" fill="none" stroke="#333" stroke-width="1.3"/>`;
+        return s+txt(rl,bx+16,ym-rl.length*LH/2);},hh);}
+  }
+  h+=P-4;
+  return{h:Math.max(h,o.minH||0),svg:(x,y,hh)=>{const dy=hh?(hh-h)/2:0;return parts.map(p=>p(x,y+dy)).join('');}};
+}
+/* запоминатель: указатель + мнемоблок (+номер, +выноски) */
+function memoEl(node,W,o={}){
+  const pw=o.pw||150,numW=o.num?40:0;
+  const callouts=node.children.filter(c=>c.kind==='callout');
+  const right=callouts.filter(c=>c.pos==='справа'||(!c.pos&&o.cr&&(c.text.length<=70||c.title)));
+  const below=callouts.filter(c=>!right.includes(c));
+  const crW=o.cr?170:0;
+  const mw=W-pw-10-numW-crW;
+  const pl=wrap(node.pointer,pw-26);const pH=pl.length*LH+14;
+  const r=rich(content(node),mw);const h=Math.max(pH,r.h,30);
+  const rcs=right.map(c=>calloutEl(c,crW-14));
+  const bcs=below.map(c=>calloutEl(c,Math.min(mw*0.8,320)));
+  const bh=bcs.reduce((s,c)=>s+c.h+22,0);
+  return{h:h+bh,cy:h/2,svg:(x,y)=>{
+    let s=pointerPath(x,y+(h-pH)/2,pw,pH)+txt(pl,x+(pw-12)/2,y+(h-pH)/2+7,{anchor:'middle'});
+    s+=`<g class="memo" onclick="this.classList.toggle('open')">`+memoRect(x+pw+10,y,mw,h)+`<g class="memo-t">`+r.svg(x+pw+10,y,h)+`</g></g>`;
+    if(o.num)s+=rect(x+W-numW+10,y+h/2-13,26,26,C.fill)+txt([String(o.num)],x+W-numW+23,y+h/2-8,{anchor:'middle',bold:true});
+    let cy=y;rcs.forEach(c=>{const cx=x+pw+10+mw+14;const yy=y+Math.max(0,(h-c.h)/2);s+=c.svg(cx,yy,{side:'left',tx:x+pw+10+mw,ty:y+h/2});cy+=c.h;});
+    let by=y+h+22;bcs.forEach(c=>{const cx=x+pw+10+mw-c.w-10;s+=c.svg(cx,by,{side:'top',tx:cx+c.w*0.35,ty:y+h-1});by+=c.h+22;});
+    return s;}};
+}
+function calloutEl(c,w){
+  const z=content(c);const r=rich(z,w,{center:!z.some(q=>q.t==='m')&&!c.title});
+  const th=c.title?LH+4:0;const h=r.h+th;
+  return{w,h,svg:(x,y,t)=>{
+    let s='';const rx=c.square?0:10;
+    s+=rect(x,y,w,h,C.fill,C.line,rx,1.2);
+    if(t){if(t.side==='left'){const by=y+h/2;s+=wedge(x,by-7,x,by+7,t.tx+1,t.ty,C.fill,C.line);}
+      else{const bx=x+w*0.35;s+=wedge(bx-8,y,bx+8,y,t.tx,t.ty,C.fill,C.line);}}
+    if(c.title)s+=txt([c.title],x+w/2,y+6,{anchor:'middle',italic:true});
+    return s+r.svg(x,y+th);}};
+}
+function boxEl(text,w,o={}){ // простой мнемоблок/связка с текстом по центру
+  const ls=wrap(text,w-16,o.bold);const h=Math.max(ls.length*LH+12,o.minH||0);
+  return{w,h,svg:(x,y,hh)=>{const H=hh||h;let s='';
+    if(o.shape==='round')s+=rect(x,y,w,H,o.fill||C.orange,C.line,Math.min(12,H/2));
+    else if(o.shape==='plain')s+=rect(x,y,w,H,C.fill);
+    else s+=memoRect(x,y,w,H);
+    return s+txt(ls,x+w/2,y+(H-ls.length*LH)/2,{anchor:'middle',bold:o.bold});}};
+}
+function itemEl(node,w){ // мнемоблок без указателя (лестница)
+  const r=rich(content(node),w);const callouts=node.children.filter(c=>c.kind==='callout');
+  const cs=callouts.map(c=>calloutEl(c,Math.min(w*0.6,300)));const bh=cs.reduce((s,c)=>s+c.h+20,0);
+  return{h:r.h+bh,cy:r.h/2,svg:(x,y)=>{let s=`<g class="memo" onclick="this.classList.toggle('open')">`+memoRect(x,y,w,r.h)+`<g class="memo-t">`+r.svg(x,y)+`</g></g>`;
+    let by=y+r.h+20;cs.forEach(c=>{const cx=x+w-c.w-20;s+=c.svg(cx,by,{side:'top',tx:cx+c.w*0.35,ty:y+r.h-1});by+=c.h+20;});return s;}};
+}
+function headerEl(text,maxW){
+  const w0=Math.min(maxW,Math.max(220,tw(pretty(text),true)*0.75+90));
+  const ls=wrap(text,w0-70,true);const h=ls.length*LH+24;
+  return{w:w0,h,svg:(x,y)=>headerEllipse(x,y,w0,h)+txt(ls,x+w0/2,y+12,{anchor:'middle',bold:true})};
+}
+
+/* ============ выбор схемы ============ */
+function chooseScheme(root,opts){
+  const k=root.children;const cnt=t=>k.filter(c=>c.kind===t).length;
+  if(opts['схема'])return opts['схема'].toLowerCase().replace('ё','е');
+  const H=cnt('header'),P=cnt('pair'),Z=cnt('memo'),M=cnt('item'),G=cnt('group'),S=cnt('link');
+  if((opts['профиль']||'').toLowerCase()==='гном'||(!H&&Z&&!M&&!G))return 'гном';
+  if(H>=2)return 'двуглавый змей';
+  if(P)return P>1?'очная ставка многоэтажная':(S?'очная ставка со связкой':'очная ставка');
+  if(Z)return 'батарея';
+  if(G){
+    const deep=k.some(g=>g.kind==='group'&&g.children.some(c=>c.kind==='group'));
+    if(deep)return 'дерево';
+    if(M)return 'лестница с гребенкой';
+    return 'эполеты';
+  }
+  const items=k.filter(c=>c.kind==='item');const n=items.length;
+  const plain=items.every(i=>!i.children.some(c=>c.kind!=='callout'&&c.kind!=='blank'));
+  const maxLen=Math.max(0,...items.map(i=>pretty(i.text).length));
+  const W=+(opts['ширина']||opts.__W||680);
+  const natural=items.reduce((s,i)=>s+Math.min(150,Math.max(64,tw(pretty(i.text))+22)),0)+(n-1)*12;
+  if(S)return (n>=5&&maxLen<=60&&plain)?'гребенка со связкой':'лестница со связкой';
+  if(plain&&maxLen<=32){if(natural<=W-20)return 'линейка';if(n<=12)return 'шахматы';return 'гребенка';}
+  if(plain&&n>=8&&maxLen<=60)return 'гребенка';
+  return 'лестница';
+}
+
+/* ============ раскладки схем ============ */
+const M0=10;
+function layGnom(root,W,opts){
+  let y=M0,s='';let n=parseInt(opts['начать с']||'1');const num=(opts['нумерация']||'да')!=='нет';
+  const cr=root.children.some(c=>c.kind==='memo'&&c.children.some(q=>q.kind==='callout'&&q.pos!=='снизу'));
+  for(const c of root.children){if(c.kind!=='memo')continue;const e=memoEl(c,W-2*M0,{num:num?n++:0,cr});s+=e.svg(M0,y);y+=e.h+14;}
+  return{h:y,svg:s};
+}
+function laySpine(root,W,opts,scheme){ // батарея, лестница (+связка, +гребенка)
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const link=k.find(c=>c.kind==='link');
+  const linkE=link?boxEl(link.parts[0],Math.max(80,tw(link.parts[0],true)+30),{shape:'round',bold:true}):null;
+  const sx=M0+(linkE?linkE.w/2:4);let s='',y=M0;
+  const hcs=hd?hd.children.filter(c=>c.kind==='callout'):[];
+  const he=headerEl(hd?hd.text:'',W*0.62);
+  let hx=Math.max(sx+40,(W-he.w)/2+10);
+  const hc=hcs.length?calloutEl(hcs[0],Math.min(220,W-hx-he.w-30)):null;
+  if(hc&&hx+he.w+hc.w+30>W)hx=Math.max(sx+20,W-he.w-hc.w-30);
+  const hy=y+Math.max(0,((hc?hc.h:0)-he.h)/2);s+=he.svg(hx,hy);const hcy=hy+he.h/2;s+=L(sx,hcy,hx,hcy);
+  if(hc)s+=hc.svg(hx+he.w+18,hcy-hc.h/2,{side:'left',tx:hx+he.w-2,ty:hcy});
+  y+=Math.max(he.h,hc?hc.h:0)+14;let top=hcy;
+  if(linkE){s+=L(sx,hcy,sx,y);s+=linkE.svg(sx-linkE.w/2,y);top=y+linkE.h;y+=linkE.h+12;}
+  const rx=sx+16,rw=W-rx-M0;let lastCy=top;
+  const cr=k.some(c=>c.kind==='memo'&&c.children.some(q=>q.kind==='callout'&&q.pos!=='снизу'));
+  for(const c of k){
+    let e;
+    if(c.kind==='memo')e=memoEl(c,rw,{cr,pw:Math.min(150,rw*0.3)});
+    else if(c.kind==='item'||c.kind==='text')e=itemEl(c,rw);
+    else if(c.kind==='group')e=combUnder(c,rw);
+    else continue;
+    s+=e.svg(rx,y);s+=L(sx,y+e.cy,rx,y+e.cy);lastCy=y+e.cy;y+=e.h+12;
+  }
+  s=L(sx,top,sx,lastCy)+s;
+  return{h:y,svg:s};
+}
+function combUnder(g,w){ // пункт лестницы с гребенкой под ним
+  const head=itemEl({text:g.text,children:g.children.filter(c=>c.kind==='callout')},w);
+  const items=g.children.filter(c=>['item','text','marker'].includes(c.kind));
+  const k=items.length<=3?1:(items.length<=8?2:3);const per=Math.ceil(items.length/k);
+  const cx0=14,colW=(w-cx0-(k-1)*14)/k;
+  const cols=[];for(let i=0;i<k;i++){let yy=0;const els=items.slice(i*per,(i+1)*per).map(it=>{const e=itemEl({text:it.text,children:it.children},colW-12);const r={e,y:yy};yy+=e.h+8;return r;});cols.push({els,h:yy});}
+  const ch=Math.max(...cols.map(c=>c.h));
+  return{h:head.h+12+ch,cy:head.cy,svg:(x,y)=>{let s=head.svg(x,y);const y0=y+head.h+12;
+    cols.forEach((c,i)=>{const sx=x+cx0+i*(colW+14);let last=y0;
+      c.els.forEach(r=>{s+=r.e.svg(sx+12,y0+r.y);s+=L(sx,y0+r.y+r.e.cy,sx+12,y0+r.y+r.e.cy);last=y0+r.y+r.e.cy;});
+      s=L(sx,y+head.h,sx,last)+s;});return s;}};
+}
+function layRuler(root,W,opts,two){ // линейка и шахматы
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const items=k.filter(c=>c.kind==='item');
+  const he=headerEl(hd?hd.text:'',W*0.6);let s='',y=M0;const hx=(W-he.w)/2;s+=he.svg(hx,y);y+=he.h;
+  const busY=y+14;y=busY+14;const n=items.length,g=12;
+  let n1=two?Math.floor(n/2)+1:n;if(n1>n)n1=n;
+  let iw=Math.min(150,Math.max(...items.map(i=>tw(pretty(i.text))+22),64));
+  if(n1*iw+(n1-1)*g>W-2*M0)iw=(W-2*M0-(n1-1)*g)/n1;
+  const gap=two?Math.max(g,Math.min(40,(W-2*M0-n1*iw)/(n1-1||1))):g;
+  const rowW=n1*iw+(n1-1)*gap,x0=(W-rowW)/2;
+  const els=items.map(i=>boxEl(i.text,iw));const h1=Math.max(...els.slice(0,n1).map(e=>e.h));
+  const xs=[];
+  els.slice(0,n1).forEach((e,i)=>{const x=x0+i*(iw+gap);xs.push(x+iw/2);s+=e.svg(x,y,h1);s+=L(x+iw/2,busY,x+iw/2,y);});
+  // выноски под элементами линейки (рис. 44)
+  let extra=0;items.slice(0,n1).forEach((it,i)=>{const c=it.children.find(q=>q.kind==='callout');if(!c)return;const ce=calloutEl(c,iw);s+=ce.svg(x0+i*(iw+gap),y+h1+18,{side:'top',tx:xs[i]-iw*0.15,ty:y+h1});extra=Math.max(extra,ce.h+18);});
+  let yEnd=y+h1+extra;
+  if(two&&n>n1){const y2=y+h1+14;const n2=n-n1;const h2=Math.max(...els.slice(n1).map(e=>e.h));
+    for(let j=0;j<n2;j++){const gx=x0+(j+1)*(iw+gap)-gap/2+(n1-1-n2)*(iw+gap)/2;const e=els[n1+j];s+=e.svg(gx-iw/2,y2,h2);s+=L(gx,busY,gx,y2);xs.push(gx);}
+    yEnd=y2+h2;}
+  s=L(Math.min(...xs),busY,Math.max(...xs),busY)+L(W/2,y-28,W/2,busY)+s;
+  return{h:yEnd+M0,svg:s};
+}
+function layComb(root,W,opts,withLink){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const items=k.filter(c=>c.kind==='item');const link=k.find(c=>c.kind==='link');
+  const he=headerEl(hd?hd.text:'',W*0.6);let s='',y=M0;s+=he.svg((W-he.w)/2,y);y+=he.h;
+  const nc=items.length<=8?2:3;const sizes=[...Array(nc)].map((_,i)=>Math.floor(items.length/nc)+(i<items.length%nc?1:0));const starts=sizes.map((_,i)=>sizes.slice(0,i).reduce((a,b)=>a+b,0));const cg=18,colW=(W-2*M0-(nc-1)*cg)/nc;
+  let topY;
+  if(withLink&&link){const le=boxEl(link.parts[0],W-2*M0,{shape:'round'});s+=L(W/2,y,W/2,y+12);s+=le.svg(M0,y+12);topY=y+12+le.h;y=topY+12;}
+  else{const busY=y+14;topY=busY;y=busY+14;const xs=[...Array(nc)].map((_,i)=>M0+i*(colW+cg)+2);s+=L(xs[0],busY,xs[nc-1],busY)+L(W/2,busY-14,W/2,busY);}
+  let maxY=y;
+  for(let i=0;i<nc;i++){const sx=M0+i*(colW+cg)+2;let yy=y,last=yy;
+    items.slice(starts[i],starts[i]+sizes[i]).forEach(it=>{const e=boxEl(it.text,colW-14);s+=e.svg(sx+12,yy);s+=L(sx,yy+e.h/2,sx+12,yy+e.h/2);last=yy+e.h/2;yy+=e.h+8;});
+    s+=L(sx,topY,sx,last);maxY=Math.max(maxY,yy);}
+  return{h:maxY+M0,svg:s};
+}
+function layEpaulets(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const gs=k.filter(c=>c.kind==='group');
+  const he=headerEl(hd?hd.text:'',W*0.6);let s='',y=M0;s+=he.svg((W-he.w)/2,y);y+=he.h;
+  const busY=y+14;y=busY+14;const n=gs.length,cg=14,colW=(W-2*M0-(n-1)*cg)/n;const xs=[];let maxY=y;
+  const eps=gs.map(g=>boxEl(g.text,colW,{shape:'round'}));const eh=Math.max(...eps.map(e=>e.h));
+  gs.forEach((g,i)=>{const x=M0+i*(colW+cg);xs.push(x+colW/2);s+=eps[i].svg(x,y,eh);s+=L(x+colW/2,busY,x+colW/2,y);
+    const sx=x+10;let yy=y+eh+10,last=yy;
+    g.children.filter(c=>['item','text','marker'].includes(c.kind)).forEach(it=>{const e=itemEl(it,colW-22);s+=e.svg(x+22,yy);s+=L(sx,yy+e.cy,x+22,yy+e.cy);last=yy+e.cy;yy+=e.h+8;});
+    s+=L(sx,y+eh,sx,last);maxY=Math.max(maxY,yy);});
+  s=L(xs[0],busY,xs[n-1],busY)+L(W/2,busY-14,W/2,busY)+s;
+  return{h:maxY+M0,svg:s};
+}
+function layFaceoff(root,W,scheme){
+  const k=root.children;const hds=k.filter(c=>c.kind==='header');const pairs=k.filter(c=>c.kind==='pair');
+  const link=k.find(c=>c.kind==='link');const arrows=k.filter(c=>c.kind==='arrow'||c.kind==='arrow2');
+  const snake=hds.length>=2,multi=pairs.length>1||snake;
+  const gapMid=26,inset=multi?18:0;const half=(W-2*M0-gapMid)/2;
+  const lx=M0+inset,lw=half-inset,rxp=M0+half+gapMid,rw=half-inset;const SL=M0+6,SR=W-M0-6;
+  let s='',y=M0;let spineTop=null;
+  if(snake){const a=headerEl(hds[0].text,half-inset),b=headerEl(hds[1].text,half-inset);const hh=Math.max(a.h,b.h);
+    const ax=lx+(lw-a.w)/2,bx=rxp+(rw-b.w)/2;
+    s+=a.svg(ax,y+(hh-a.h)/2)+b.svg(bx,y+(hh-b.h)/2);
+    spineTop=[{x:SL,y:y+hh/2,from:ax},{x:SR,y:y+hh/2,from:bx+b.w}];y+=hh+14;}
+  else{const hd=hds[0];const lwMax=link?Math.max(...(link.parts.map(q=>Math.max(70,tw(q||'',true)+30)))):0;const hw=multi?(link?W-2*(M0+lwMax/2+14):W-2*M0-90):W-2*M0-half*0.4;const ls=wrap(hd?hd.text:'',hw-120,true);const hh=ls.length*LH+24;const hx=(W-hw)/2,hcy=y+hh/2;
+    s+=headerEllipse(hx,y,hw,hh)+txt(ls,W/2,y+12,{anchor:'middle',bold:true});
+    const ex=[M0+half*0.3,W-M0-half*0.3];let yb=y+hh+16;
+    if(link){const parts=[link.parts[0]||'',link.parts[1]||''];const les=parts.map(p=>boxEl(p,Math.max(70,tw(p,true)+30),{shape:'round',bold:true}));
+      const lh=Math.max(...les.map(l=>l.h));
+      les.forEach((le,i)=>{
+        if(multi){const x=i?W-M0-le.w:M0,cx=x+le.w/2;const ex0=i?hx+hw:hx;s+=L(ex0,hcy,cx,hcy)+L(cx,hcy,cx,yb);s+=le.svg(x,yb,lh);}
+        else{const cx=ex[i];s+=L(cx,ellY(cx,hx,y,hw,hh,true),cx,yb);s+=le.svg(cx-le.w/2,yb,lh);s+=L(cx,yb+lh,cx,yb+lh+16);}});
+      if(multi)spineTop=[{x:SL,y:yb+lh},{x:SR,y:yb+lh}];
+      y=yb+lh+16;}
+    else{if(multi){spineTop=[{x:SL,y:hcy,from:hx},{x:SR,y:hcy,from:hx+hw}];y+=hh+14;}
+      else{ex.forEach(cx=>s+=L(cx,ellY(cx,hx,y,hw,hh,true),cx,yb));y=yb;}}
+  }
+  const rows=[];
+  pairs.forEach(p=>{const zl=content({text:p.left,children:p.children.filter(c=>c.indent!==undefined&&c.side!=='r')});
+    const lc=p.children.length&&p.children.some(c=>c.kind==='marker')?splitPairKids(p):null;
+    const LZ=p.lz||(lc?lc.l:[{t:'p',text:p.left}]),RZ=p.rz||(lc?lc.r:[{t:'p',text:p.right}]);const a=rich(LZ,lw,{padR:12}),b=rich(RZ,rw,{padL:12});
+    const h=Math.max(a.h,b.h,30);
+    s+=pointerPath(lx,y,lw,h)+`<g class="memo" onclick="this.classList.toggle('open')"><g class="memo-t">`+a.svg(lx,y,h)+`</g></g>`;
+    s+=counterPath(rxp,y,rw,h)+`<g class="memo" onclick="this.classList.toggle('open')"><g class="memo-t">`+b.svg(rxp,y,h)+`</g></g>`;
+    const ty=y+h/2;[-3.5,0,3.5].forEach(d=>s+=L(lx+lw,ty+d,rxp,ty+d,C.tie,1.6));
+    rows.push(ty);y+=h+12;});
+  if(spineTop&&rows.length){const last=rows[rows.length-1];
+    s+=L(spineTop[0].x,spineTop[0].y,spineTop[0].x,last)+L(spineTop[1].x,spineTop[1].y,spineTop[1].x,last);
+    if(spineTop[0].from!==undefined){s+=L(spineTop[0].x,spineTop[0].y,spineTop[0].from,spineTop[0].y)+L(spineTop[1].x,spineTop[1].y,spineTop[1].from,spineTop[1].y);}
+    rows.forEach(r=>{s+=L(spineTop[0].x,r,lx,r)+L(spineTop[1].x,r,rxp+rw,r);});}
+  // фигурные стрелки
+  if(arrows.length){y+=4;
+    const a2=arrows.find(a=>a.kind==='arrow2');
+    if(a2){const bw=W-2*M0-half*0.5;const e=boxEl(a2.text,bw,{shape:'plain'});
+      [lx+lw/2,rxp+rw/2].forEach(cx=>s+=blockArrow(cx,y,36,26,true));s+=e.svg((W-bw)/2,y+25);y+=25+e.h+8;}
+    else{const singles=arrows.filter(a=>a.kind==='arrow');let hmax=0;
+      singles.slice(0,2).forEach((a,i)=>{const cx=i?rxp+rw/2:lx+lw/2;const bw=Math.min(lw*0.8,240);const e=boxEl(a.text,bw,{shape:'plain'});
+        s+=blockArrow(cx,y,36,26,true)+e.svg(cx-bw/2,y+25);hmax=Math.max(hmax,e.h);});y+=25+hmax+8;}
+  }
+  return{h:y+M0,svg:s};
+}
+function splitPairKids(p){ // маркеры в паре: «л:» / «п:» или поровну
+  const l=[{t:'p',text:p.left}],r=[{t:'p',text:p.right}];
+  for(const c of p.children){if(c.kind!=='marker')continue;let m;
+    if(m=c.text.match(/^(?:п|прав[оа]?)\s*:\s*(.*)$/i))r.push({t:'m',text:m[1]});
+    else if(m=c.text.match(/^(?:л|лев[оа]?)\s*:\s*(.*)$/i))l.push({t:'m',text:m[1]});
+    else l.push({t:'m',text:c.text});}
+  return{l:l.filter(z=>z.text),r:r.filter(z=>z.text)};
+}
+function layTree(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');
+  const kids=n=>n.children.filter(c=>['group','item','text'].includes(c.kind));
+  const leaves=n=>{const c=kids(n);return c.length?c.reduce((s,q)=>s+leaves(q),0):1;};
+  const rootN={text:hd?hd.text:'',children:k.filter(c=>['group','item','text'].includes(c.kind))};
+  const nl=leaves(rootN);const g=10;const lw=Math.max(66,Math.min(150,(W-2*M0-(nl-1)*g)/nl));
+  function meas(n){const c=kids(n);if(!c.length){n._w=lw;}else{c.forEach(meas);n._w=c.reduce((s,q)=>s+q._w,0)+(c.length-1)*g;}
+    n._e=boxEl(n.text,Math.min(n._w,Math.max(lw,tw(pretty(n.text))+24)),{shape:c.length&&n!==rootN?'plain':undefined});}
+  meas(rootN);let s='';let maxY=0;
+  function draw(n,x,y,isRoot){let e,h;
+    if(isRoot){const he=headerEl(n.text,W*0.6);s+=he.svg(x+(n._w-he.w)/2,y);h=he.h;}
+    else{e=n._e;s+=e.svg(x+(n._w-e.w)/2,y);h=e.h;}
+    maxY=Math.max(maxY,y+h);const c=kids(n);if(!c.length)return;
+    const busY=y+h+12;let cx=x;const centers=[];const cy=busY+12;
+    c.forEach(q=>{centers.push(cx+q._w/2);draw(q,cx,cy,false);cx+=q._w+g;});
+    s+=L(x+n._w/2,y+h,x+n._w/2,busY);if(centers.length>1)s+=L(centers[0],busY,centers[centers.length-1],busY);
+    centers.forEach(c0=>s+=L(c0,busY,c0,cy));}
+  draw(rootN,(W-rootN._w)/2,M0,true);
+  return{h:maxY+M0,svg:s};
+}
+
+/* ============ МОЛНИЯ ============ */
+function parseMolniya(src){
+  const items=[];
+  for(const raw of src.split('\n')){const t=raw.trim();if(!t||t.startsWith('#'))continue;let m;
+    if(/^профиль\s*[:=]/i.test(t)||/^схема\s*[:=]/i.test(t))continue;
+    if(/^-{3,}$/.test(t))items.push({k:'sep'});
+    else if(m=t.match(/^тема\s*:\s*(.*)$/i))items.push({k:'title',text:m[1]});
+    else if(m=t.match(/^вопрос\s*:\s*(.*)$/i))items.push({k:'q',text:m[1]});
+    else if(m=t.match(/^правило(?:\s*(?:→|->)\s*([^:]+))?\s*:\s*(.*)$/i))items.push({k:'rule',targets:m[1]?m[1].split(',').map(s=>s.trim().replace(/^[«"]|[»"]$/g,'')).filter(Boolean):[],text:m[2]});
+    else if(m=t.match(/^пример\s*:\s*(.*)$/i))items.push({k:'ex',text:m[1]});
+    else if(m=t.match(/^связь\s+(.+?)\s*(?:→|->)\s*(.+?)\s*:\s*(.*)$/i))items.push({k:'dep',a:m[1].replace(/^[«"]|[»"]$/g,''),b:m[2].replace(/^[«"]|[»"]$/g,''),text:m[3]});
+    else if(m=t.match(/^(понятие|пояснитель)\s*:\s*(.*?)\s*(?:->|→)\s*(.*)$/i))items.push({k:m[1].toLowerCase()==='понятие'?'memo':'expl',a:m[2],b:m[3]});
+    else if(m=t.match(/^почему\s*:\s*(.*)$/i))items.push({k:'why',text:m[1]});
+    else if(m=t.match(/^вывод\s*:\s*(.*)$/i))items.push({k:'concl',text:m[1]});
+    else items.push({k:'q',text:t});
+  }
+  return items;
+}
+function sentenceTokens(s){const out=[];const re=/\[([^\]]*)\](\^)?(?:\{([^}]*)\})?/g;let last=0,m;
+  while(m=re.exec(s)){if(m.index>last)out.push({t:'txt',text:s.slice(last,m.index)});out.push({t:'seg',text:m[1],above:!!m[2],label:m[3]||''});last=re.lastIndex;}
+  if(last<s.length)out.push({t:'txt',text:s.slice(last)});return out;}
+function layMolniya(src,W){
+  const items=parseMolniya(src);const P=14,iw=W-2*P;let y=P,s='';const warns=[];
+  const ellCall=(text,maxW)=>{const ls=wrap(text,maxW);const w=Math.min(maxW,Math.max(...ls.map(l=>tw(l))))+30;return{ls,w,h:ls.length*LH+12};};
+  let pendingRules=[],lastEx=null;const deps=[];
+  const flush=()=>{};
+  for(let i=0;i<items.length;i++){const it=items[i];
+    if(it.k==='title'){s+=txt(wrap(it.text.toUpperCase(),iw,true),W/2,y,{anchor:'middle',bold:true});y+=wrap(it.text,iw,true).length*LH+6;}
+    else if(it.k==='q'){const ls=wrap(it.text,iw,true);s+=txt(ls,W/2,y,{anchor:'middle',bold:true});y+=ls.length*LH+10;}
+    else if(it.k==='sep'){s+=L(P,y+4,W-P,y+4,'#ffffff',2);y+=14;}
+    else if(it.k==='rule')pendingRules.push(it);
+    else if(it.k==='dep')deps.push(it);
+    else if(it.k==='ex'){
+      // связи, записанные сразу после примера, относятся к нему
+      const myDeps=[];let j=i+1;while(j<items.length&&items[j].k==='dep'){myDeps.push(items[j]);items[j].k='done';j++;}
+      const r=drawExample(it.text,pendingRules,myDeps,y);s+=r.svg;y=r.y;pendingRules=[];}
+    else if(it.k==='memo'){const pw=Math.min(170,iw*0.3);const pl=wrap(it.a,pw-26,true);const bl=wrap(it.b,iw-pw-24);const h=Math.max(pl.length,bl.length)*LH+14;
+      s+=pointerPath(P,y,pw,h,'#fff',C.mink)+txt(pl,P+(pw-12)/2,y+(h-pl.length*LH)/2,{anchor:'middle',bold:true});
+      s+=rect(P+pw+10,y,iw-pw-10,h,'#fff',C.mink)+`<g class="memo"><g class="memo-t">`+txt(bl,P+pw+18,y+(h-bl.length*LH)/2)+`</g></g>`;y+=h+14;}
+    else if(it.k==='expl'){const a=ellCall(it.a,160);const bw=Math.max(110,tw(it.b,true)+30);const cx=W/2;
+      s+=`<ellipse cx="${cx}" cy="${y+a.h/2+4}" rx="${a.w/2+8}" ry="${a.h/2+4}" fill="${C.mcall}" stroke="${C.mcallb}" stroke-width="1.2"/>`;
+      const by=y+a.h+38;s+=wedge(cx-8,y+a.h+4,cx+8,y+a.h+4,cx,by,C.mcall,C.mcallb);
+      s+=txt(a.ls,cx,y+10,{anchor:'middle'});s+=rect(cx-bw/2,by,bw,24,'#fff',C.mink,12,1.2)+txt([it.b],cx,by+4,{anchor:'middle'});y=by+36;}
+    else if(it.k==='why'){const bw=Math.min(240,iw*0.45);const ls=wrap(it.text,bw-16);const h=ls.length*LH+12;const x=W-P-bw-30;
+      s+=rect(x,y,bw,h,C.mcall,C.mcallb,0,1.2)+txt(ls,x+bw/2,y+6,{anchor:'middle'});s+=blockArrow(x+bw/2,y+h,40,26,false,C.mcall,C.mcallb);y+=h+26;}
+    else if(it.k==='concl'){const bw=Math.min(iw*0.7,360);const ls=wrap(it.text,bw-20,true);const h=ls.length*LH+14;const x=W-P-bw-30+Math.min(0,(Math.min(240,iw*0.45)-bw)/2);
+      s+=rect(x,y,bw,h,'#fff',C.mink,0,1.6)+txt(ls,x+bw/2,y+7,{anchor:'middle',bold:true});y+=h+14;}
+  }
+  function drawExample(text,rules,mdeps,y0){
+    const toks=sentenceTokens(text);const fs=14,lh=28,pad=16;let svg='';
+    // раскладка предложения потоком
+    const maxW=iw-2*pad;let lines=[[]],cw=0;const segs=[];
+    const add=(piece)=>{if(cw+piece.w>maxW&&cw>0){lines.push([]);cw=0;if(piece.t==='txt'&&!piece.text.trim())return;}piece.x=cw;lines[lines.length-1].push(piece);cw+=piece.w;};
+    for(const t of toks){
+      if(t.t==='txt'){t.text.split(/(\s+)/).filter(x=>x!=='').forEach(w=>add({t:'txt',text:w,w:tw(pretty(w),true,fs)}));}
+      else{const w=tw(pretty(t.text),true,fs)+(t.text.trim().length<=2?12:18);const seg={...t,w};segs.push(seg);add(seg);}
+    }
+    const lineW=lines.map(l=>l.reduce((s,p)=>s+p.w,0));const boxW=Math.min(iw,Math.max(...lineW)+2*pad+10,iw);const bx=(W-boxW)/2;
+    // правила сверху
+    const findSeg=n=>segs.find(g=>g.label.toLowerCase()===n.toLowerCase())||segs.find(g=>g.text.trim()===n)||segs.find(g=>g.text.includes(n));
+    let y=y0;
+    const ruleW=rules.length?Math.min(250,(iw-(rules.length-1)*12)/rules.length):0;
+    const rl=rules.map(r=>{const ls=wrap(r.text,ruleW-16);return{r,ls,h:ls.length*LH+12};});
+    const rh=rl.length?Math.max(...rl.map(q=>q.h)):0;
+    const topLabels=segs.filter(g=>g.above&&g.label);
+    const tlH=topLabels.length?30:0;const depH=mdeps.length?34:0;
+    const gapAbove=rules.length?38:10;
+    const boxY=y+rh+(rh?gapAbove:0)+tlH+depH;
+    const boxH=lines.length*lh+14;
+    // позиции сегментов
+    lines.forEach((ln,li)=>{const lx=bx+pad+5+(boxW-2*pad-10-lineW[li])/2;ln.forEach(p=>{p.ax=lx+p.x;p.ay=boxY+7+li*lh;});});
+    svg+=rect(bx,boxY,boxW,boxH,C.mbox,C.mink,0,1.8);
+    lines.forEach(ln=>ln.forEach(p=>{
+      if(p.t==='txt')svg+=txt([pretty(p.text)],p.ax,p.ay+5,{bold:true,size:fs});
+      else{svg+=rect(p.ax+1,p.ay+1,p.w-2,lh-6,'#fff',C.mink,11,1.2)+txt([pretty(p.text)],p.ax+p.w/2,p.ay+5,{anchor:'middle',bold:true,size:fs});}
+    }));
+    // правила: раскладка над целями
+    let cursor=P;const placed=[];
+    rl.forEach(q=>{const tg=q.r.targets.map(findSeg).filter(Boolean);if(q.r.targets.length&&tg.length<q.r.targets.length)warns.push('Правило не нашло цель: '+q.r.targets.join(', '));
+      const want=tg.length?tg.reduce((s,g)=>s+g.ax+g.w/2,0)/tg.length-ruleW/2:cursor;let x=Math.max(cursor,Math.min(want,W-P-ruleW));placed.push({q,x,tg});cursor=x+ruleW+12;});
+    // если вылезли за край — сдвигаем всё влево
+    const over=cursor-12-(W-P);if(over>0)placed.forEach(p=>p.x=Math.max(P,p.x-over));
+    placed.forEach(({q,x,tg})=>{const ry=y+(rh-q.h);
+      tg.forEach(g=>{const bx0=Math.max(x+12,Math.min(x+ruleW-28,g.ax+g.w/2-8));svg+=`<path d="M${bx0},${ry+q.h-1}L${g.ax+g.w/2},${g.ay+1}L${bx0+16},${ry+q.h-1}" fill="${C.mcall}" stroke="${C.mcallb}" stroke-width="1.1"/>`;});
+      svg+=rect(x,ry,ruleW,q.h,C.mcall,C.mcallb,10,1.2);
+      tg.forEach(g=>{const bx0=Math.max(x+12,Math.min(x+ruleW-28,g.ax+g.w/2-8));svg+=L(bx0+1.5,ry+q.h-0.6,bx0+14.5,ry+q.h-0.6,C.mcall,2.4);});
+      svg+=txt(q.ls,x+ruleW/2,ry+6,{anchor:'middle'});});
+    // ломаные стрелки (вопрос от главного слова к зависимому)
+    mdeps.forEach((d,i)=>{const A=findSeg(d.a),B=findSeg(d.b);if(!A||!B){warns.push('Связь не нашла слова: '+d.a+' → '+d.b);return;}
+      const ax=A.ax+A.w/2,bxx=B.ax+B.w/2,top=boxY-depH+6+i*0;const yA=A.ay;const yB=B.ay;
+      svg+=`<path d="M${ax},${yA}V${top}H${bxx}V${yB-4}" fill="none" stroke="#444" stroke-width="2"/><path d="M${bxx-5},${yB-10}L${bxx},${yB-1}L${bxx+5},${yB-10}Z" fill="#444"/>`;
+      const lw=tw(d.text)+22,mx=(ax+bxx)/2;svg+=rect(mx-lw/2,top-10,lw,20,C.mcall,C.mcallb,10,1.1)+txt([d.text],mx,top-8,{anchor:'middle'});});
+    // подписи сверху
+    let tc=P;topLabels.forEach(g=>{const c=ellCall(g.label,150);let x=Math.max(tc,g.ax+g.w/2-c.w/2);tc=x+c.w+8;const yy=boxY-depH-tlH+2;
+      svg+=`<ellipse cx="${x+c.w/2}" cy="${yy+c.h/2-3}" rx="${c.w/2}" ry="${c.h/2-2}" fill="${C.mcall}" stroke="${C.mcallb}" stroke-width="1.1"/>`+txt(c.ls,x+c.w/2,yy+3,{anchor:'middle'});});
+    // подписи снизу: ряды без наложений
+    let by=boxY+boxH+34;const bl=segs.filter(g=>!g.above&&g.label).map(g=>({g,c:ellCall(g.label,150),t:g.ax+g.w/2}));
+    const spread=(arr)=>{arr.sort((p,q)=>p.t-q.t);arr.forEach(o=>o.x=o.t-o.c.w/2);
+      for(let i=0;i<arr.length;i++)arr[i].x=Math.max(arr[i].x,P,i?arr[i-1].x+arr[i-1].c.w+6:P);
+      for(let i=arr.length-1;i>=0;i--)arr[i].x=Math.min(arr[i].x,i<arr.length-1?arr[i+1].x-arr[i].c.w-6:W-P-arr[i].c.w);
+      return arr.every((o,i)=>o.x>=P-0.5&&(!i||o.x>=arr[i-1].x+arr[i-1].c.w+5));};
+    const fits=bl.reduce((s0,o)=>s0+o.c.w+6,0)<=iw;
+    if(fits){spread(bl);bl.forEach(o=>o.r=0);}
+    else{bl.sort((p,q)=>p.t-q.t);const r0=bl.filter((_,i)=>i%2===0),r1=bl.filter((_,i)=>i%2===1);spread(r0);spread(r1);r0.forEach(o=>o.r=0);r1.forEach(o=>o.r=1);}
+    const rowH=Math.max(30,...bl.map(o=>o.c.h))+10;
+    const geo=bl.map(o=>{const yy=by+o.r*rowH;const tx=o.t,ty=o.g.ay+lh-6;
+      const bx1=Math.max(o.x+o.c.w*0.2,Math.min(o.x+o.c.w*0.8-12,tx-6));const ey=ellY(bx1+6,o.x,yy,o.c.w,o.c.h,false);return{o,yy,tx,ty,bx1,ey};});
+    geo.forEach(q=>svg+=`<path d="M${q.bx1},${q.ey+3}L${q.tx},${q.ty}L${q.bx1+12},${q.ey+3}" fill="${C.mcall}" stroke="${C.mcallb}" stroke-width="1.1"/>`);
+    geo.forEach(q=>{const o=q.o;svg+=`<ellipse cx="${o.x+o.c.w/2}" cy="${q.yy+o.c.h/2}" rx="${o.c.w/2}" ry="${o.c.h/2}" fill="${C.mcall}" stroke="${C.mcallb}" stroke-width="1.1"/>`;});
+    geo.forEach(q=>{const o=q.o;const yt=q.ey-3,f=(yt-(q.ey+3))/(q.ty-(q.ey+3));
+      const xl=q.bx1+(q.tx-q.bx1)*f+1.2,xr=q.bx1+12+(q.tx-q.bx1-12)*f-1.2;
+      svg+=`<path d="M${q.bx1+1.4},${q.ey+4}L${xl},${yt}L${xr},${yt}L${q.bx1+10.6},${q.ey+4}Z" fill="${C.mcall}"/>`+txt(o.c.ls,o.x+o.c.w/2,q.yy+6,{anchor:'middle'});});
+    const nRows=bl.length?Math.max(...bl.map(o=>o.r))+1:0;
+    const yEnd=bl.length?by+nRows*rowH+4:boxY+boxH+16;
+    return{svg,y:yEnd};
+  }
+  const body=s;const H=y+P;
+  return{h:H,svg:rect(0,0,W,H,C.mbg,'none',0,0)+body,warns};
+}
+
+/* ============ проверки по правилам Паронджанова ============ */
+function lint(root,scheme,opts){
+  const w=[];const cls=parseInt(opts['класс']||'10');const maxWords=cls<=4?8:cls<=7?10:cls<=9?12:15;
+  const sentences=t=>String(t).replace(/\$[^$]*\$/g,'Ф').split(/(?<=[.!?])\s+/).filter(s=>s.trim());
+  (function walk(n){for(const c of n.children){
+    const texts=[c.text,c.pointer,c.left,c.right].filter(Boolean);
+    texts.forEach(t=>sentences(t).forEach(s=>{const k=s.split(/\s+/).length;if(k>maxWords)w.push(`Длинное предложение (${k} слов при норме до ${maxWords} для ${cls} кл.): «${s.slice(0,60)}…»`);}));
+    if(c.kind==='memo'&&c.def&&c.text&&!/^это(\s|$)/i.test(c.text))w.push(`Определение «${c.pointer}» лучше начинать со слова «Это…» (ГНОМ, правило 2).`);
+    if(c.kind==='memo'&&/^что такое/i.test(c.pointer)&&c.pointer.split(/\s+/).length>4)w.push(`«Что такое…» ставят только перед терминами из 1–2 слов (ГНОМ, правило 8): «${c.pointer}».`);
+    if((c.kind==='memo'||c.kind==='item')&&c.text&&sentences(c.text).length>=3&&!c.children.some(q=>q.kind==='marker'))w.push(`В блоке «${(c.pointer||c.text).slice(0,40)}» три и больше мыслей — разбейте на зоны с маркерами (ГНОМ, правило 3).`);
+    if(c.kind==='pair'&&!c.lz&&(!c.left||!c.right))w.push('В очной ставке у пары нет второй половины.');
+    walk(c);}})(root);
+  const items=root.children.filter(c=>c.kind==='item').length;
+  if(scheme==='линейка'&&items>7)w.push('В линейке больше 7 элементов — лучше «Шахматы» или «Гребенка».');
+  if(!root.children.some(c=>c.kind==='header')&&!['гном'].includes(scheme))w.push('Нет строки «тема:» — заголовок схемы.');
+  return w;
+}
+
+/* ============ сборка ============ */
+function render(src,W){
+  const first=src.split('\n').find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
+  if(/^профиль\s*[:=]\s*молния/i.test(first.trim())||/\[[^\]]+\]\{/.test(src)&&/^\s*пример\s*:/im.test(src)){
+    const r=layMolniya(src,W);return{scheme:'МОЛНИЯ',svg:r.svg,h:r.h,warns:r.warns};}
+  const {root,opts}=parse(src);if(opts['ширина'])W=parseInt(opts['ширина'])||W;
+  opts.__W=W;const scheme=chooseScheme(root,opts);let r;
+  const sc=scheme.replace('ё','е');
+  if(sc==='гном')r=layGnom(root,W,opts);
+  else if(['батарея','лестница','лестница со связкой','лестница с гребенкой'].includes(sc))r=laySpine(root,W,opts,sc);
+  else if(sc==='линейка')r=layRuler(root,W,opts,false);
+  else if(sc==='шахматы')r=layRuler(root,W,opts,true);
+  else if(sc==='гребенка')r=layComb(root,W,opts,false);
+  else if(sc==='гребенка со связкой')r=layComb(root,W,opts,true);
+  else if(sc==='эполеты')r=layEpaulets(root,W);
+  else if(sc.startsWith('очная ставка')||sc==='двуглавый змей')r=layFaceoff(root,W,sc);
+  else if(sc==='дерево')r=layTree(root,W);
+  else r=laySpine(root,W,opts,'лестница');
+  return{scheme,svg:r.svg,h:r.h,warns:lint(root,sc,opts)};
+}
+
+/* ============ примеры ============ */
+const EX={
+'ГНОМ — акциз (рис. 30, фрагмент)':
+`профиль: гном
+опр: Акциз -> Это косвенный налог на высокорентабельные товары.
+  * Налог устанавливается государством с целью изъятия в бюджет сверхприбыли.
+  * Налог устанавливается в процентах от отпускной цены товара.
+опр: Сверхприбыль -> Это прибыль, полученная производителями от производства товаров со значительной разницей между:
+  * ценой, определяемой потребительной стоимостью,
+  * фактической стоимостью.
+Запомните ->
+  * Акциз
+  * Акцизный сбор
+  * Акцизный налог
+  } это одно и то же
+Чему равна сумма акцизов ->
+  $$Сумма акцизов = Отпускная цена − Оптовая цена$$`,
+'ГНОМ — математика 8 класс':
+`профиль: гном
+класс: 8
+опр: Квадратное уравнение -> Это уравнение вида $ax^2 + bx + c = 0$, где $a != 0$.
+опр: Дискриминант -> Это число $D = b^2 - 4ac$.
+Сколько корней? ->
+  * $D > 0$ — два корня;
+  * $D = 0$ — один корень;
+  * $D < 0$ — корней нет.
+формула: корней ->
+  $$x = (−b ± sqrtD) / 2a$$
+теорема: Виета -> Если $x1$ и $x2$ — корни уравнения $x^2 + px + q = 0$, то:
+  * $x1 + x2 = −p$
+  * $x1 · x2 = q$
+  пример: $x^2 − 5x + 6 = 0$ → корни 2 и 3`,
+'Линейка — фрукты (рис. 41)':
+`тема: Фрукты
+- Яблоки
+- Груши
+- Апельсины
+- Мандарины
+- Лимоны`,
+'Линейка с выносками — радуга (рис. 44)':
+`тема: Семь цветов радуги
+- Красный
+  выноска: Каждый
+- Оранжевый
+  выноска: Охотник
+- Желтый
+  выноска: Желает
+- Зеленый
+  выноска: Знать
+- Голубой
+  выноска: Где
+- Синий
+  выноска: Сидят
+- Фиолетовый
+  выноска: Фазаны`,
+'Шахматы — семь чудес (рис. 46)':
+`тема: Семь чудес света
+- Пирамиды в Египте
+- Статуя Зевса в Олимпии
+- Маяк в Александрии
+- Мавзолей в Галикарнасе
+- Висячие сады Семирамиды
+- Храм Артемиды в Эфесе
+- Статуя Гелиоса на Родосе`,
+'Гребенка со связкой — Дон Кихот (рис. 52)':
+`тема: Когда Дон Кихоту хочется чихнуть?
+связка: Тогда, когда он ощущает внутреннее беспокойство, в основе которого лежит:
+- Предстоящее сражение с ветряными мельницами
+- Внезапное падение в пропасть
+- Весенний авитаминоз
+- Осеннее одиночество
+- Нападение страшных разбойников
+- Прямое попадание атомной бомбы
+- Случайная встреча с полуобнаженной красавицей`,
+'Эполеты — четырёхугольники (математика)':
+`тема: Четырёхугольники
+Параллелограммы:
+  - прямоугольник
+  - ромб
+  - квадрат
+Трапеции:
+  - равнобедренная
+  - прямоугольная
+Прочие:
+  - дельтоид
+  - произвольный`,
+'Лестница — законы Мерфи (рис. 54)':
+`тема: Законы Мерфи
+- Бутерброд всегда падает на пол намазанной стороной.
+- Упавший груз падает туда, где он может причинить наибольший ущерб.
+- Необходимость введения в конструкцию принципиальных изменений нарастает непрерывно по мере приближения к завершению проекта.
+- Если вам кажется, что ситуация улучшается, значит, вы чего-то не заметили.`,
+'Лестница со связкой (рис. 61)':
+`тема: Компетенция советов, их правовой статус
+связка: Советы:
+- Полномочны делать лишь то, что прямо разрешено законом
+- Выражают интересы избирателей
+- Действуют в рамках своей компетенции
+- Имеют право прямого обращения в центральные министерства и ведомства`,
+'Лестница с гребенкой и выноской (рис. 56)':
+`тема: Полномочия органов самоуправления
+  уточнение: В области охраны:
+    * общественного порядка
+    * прав и свобод граждан
+- Органы самоуправления обязаны соблюдать Конституцию и законы России
+- Они должны обеспечивать охрану общественного порядка
+- В их ведении находятся:
+  - Охрана порядка с помощью территориальных органов внутренних дел
+  - Рассмотрение административных правонарушений
+  - Попечительство несовершеннолетних
+  - Контроль в местах лишения свободы
+  - Взаимодействие с военкоматами
+  - Руководство гражданской обороной`,
+'Батарея с выносками (рис. 67)':
+`тема: Действия познающего человека
+Обнаружение сигнала -> Это выделение действующего раздражителя из хаоса окружающего фона.
+  выноска: — Тут что-то есть! Но пока не разберу что.
+Различение сигнала -> Это мысленное отделение одного сигнала от сходного с ним другого.
+  выноска: — Это что-то более темное и рыхлое, чем вон то.
+Опознание сигнала -> Это мысленное отнесение данного объекта к какой-либо группе объектов.
+  | Это мысленное раскладывание по полочкам, по словам-названиям.
+  выноска: — Это какой-то порок древесины!`,
+'Батарея — информатика: типы данных':
+`тема: Простые типы Python
+класс: 10
+int -> Целое число: $5$, $−12$, $10**100$
+float -> Дробное число: $3.14$, $1e−3$
+  выноска: Сравнивать float через == опасно
+str -> Строка: 'кот', "42"
+bool -> Логическое значение: True или False`,
+'Очная ставка — Моська и Слон (рис. 68)':
+`тема: Чем отличается Моська от Слона?
+Моська — маленькая, задиристая. Она наскакивает на Слона. >< Слон — большой, сильный, уверенный в себе. Он спокойно идет своей дорогой.`,
+'Очная ставка со связками (рис. 70)':
+`тема: Чем различаются наука и философия?
+связка: Наука | Философия
+* Исходит из повседневного жизненного опыта.
+* Опирается на опытные, эмпирические методы исследования.
+><
+* Рассматривает мир за пределами человеческого опыта.
+* Дает целостное понимание мира.
+* Дает мировоззренческую опору научным исследованиям.`,
+'Очная ставка — while и for (информатика)':
+`тема: Чем отличается while от for?
+связка: while | for
+Повторяет, пока условие истинно >< Повторяет для каждого элемента
+Число шагов заранее неизвестно >< Число шагов известно заранее
+Можно зациклиться навсегда >< Сам заканчивается
+стрелка: Пример: ввод до нуля
+стрелка: Пример: for i in range(10)`,
+'Многоэтажная очная ставка (рис. 71)':
+`тема: Чем отличается мир идей от реального мира? (по Платону)
+связка: Мир идей | Реальный мир
+Вечный >< Временный
+Покоящийся >< Движущийся
+Бессмертный >< Смертный
+Постигаемый разумом >< Воспринимаемый чувствами
+Неизменный >< Изменчивый
+Неделимый >< Делимый
+стрелка: Это мир идей Платона
+стрелка: Это реальный мир, в котором мы живем`,
+'Двуглавый змей (рис. 74)':
+`тема: Три знаменитых вопроса, которые задал Кант
+тема: Три типа отношений «человек — мир»
+Что я могу знать? >< Познавательное отношение
+Что я должен делать? >< Практическое отношение
+На что я могу надеяться? >< Ценностное отношение
+двойная стрелка: Три вопроса Канта как раз отражают три указанных типа отношений`,
+'Дерево — новая схема (рис. 93)':
+`тема: Процесс учения
+Фаза углубления
+  Ступень ясности
+    - Выделение и углубление
+  Ступень ассоциации
+    - Связь нового материала с прошлым опытом
+Фаза осознания
+  Ступень системы
+    - Поиск выводов, определений, законов
+  Ступень метода
+    - Применение полученных знаний`,
+'МОЛНИЯ — прямая речь (рис. 6)':
+`профиль: молния
+вопрос: Как записать прямую речь? Правила и примеры
+правило → Запятая, Тире: Когда прямая речь стоит ПЕРЕД словами автора, после нее ставят запятую и тире.
+пример: [«Пойдем в кино»]{Прямая речь}[,]{Запятая} [—]{Тире} [сказал Вася.]{Слова автора}
+---
+правило → Двоеточие: Когда прямая речь стоит ПОСЛЕ слов автора, перед ней ставят двоеточие.
+пример: [Вася сказал]{Слова автора}[:]{Двоеточие} [«Пойдем в кино».]{Прямая речь}
+---
+понятие: Прямая речь -> Это точно записанная чужая речь, переданная от лица того, кто ее сказал.`,
+'МОЛНИЯ — причастный оборот (рис. 10)':
+`профиль: молния
+тема: Что такое причастный оборот
+понятие: Причастный оборот -> Это причастие с зависимыми словами
+правило → Опавшие: Причастный оборот
+пример: [Опавшие]{Причастие} [с берез]{Зависимые слова} [листья]{Не входит в оборот} [усыпали тропинку]
+связь листья → Опавшие: Какие?
+почему: Почему «листья» не входит? Потому что есть правило:
+вывод: В причастный оборот не входит определяемое им существительное.`,
+'МОЛНИЯ — квадратный трёхчлен (математика)':
+`профиль: молния
+вопрос: Как называются части квадратного трёхчлена?
+правило → Старший коэффициент: Старший коэффициент не равен нулю — иначе трёхчлен не квадратный.
+пример: [$a$]{Старший коэффициент}$x^2$ + [$b$]{Второй коэффициент}$x$ + [$c$]{Свободный член}
+---
+вопрос: Разбор строки Python
+правило → range: range(1, 6) даёт числа 1, 2, 3, 4, 5 — правая граница не входит.
+пример: [for]{ключевое слово} [i]{переменная цикла} in [range(1, 6)]{range}:`
+};
+
+/* ============ интерфейс ============ */
+const $=id=>document.getElementById(id);
+const sel=$('ex');Object.keys(EX).forEach(k=>{const o=document.createElement('option');o.textContent=k;sel.appendChild(o);});
+let svgText='';
+function update(){
+  const W=+$('w').value;let r;
+  try{r=render($('src').value,W);}catch(e){$('pic').innerHTML='<pre>'+esc(e.stack)+'</pre>';$('meta').textContent='ОШИБКА';return;}
+  const cls=($('sc').checked?'selfcheck ':'')+($('bl').checked?'blind':'');
+  svgText=`<svg xmlns="http://www.w3.org/2000/svg" class="${cls}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`;
+  $('pic').innerHTML=svgText;
+  $('meta').textContent='Схема: '+r.scheme;
+  $('warn').innerHTML=(r.warns&&r.warns.length?r.warns.map(w=>'<div>'+esc(w)+'</div>').join(''):'<div class="ok">Замечаний нет</div>');
+}
+sel.onchange=()=>{$('src').value=EX[sel.value];update();};
+['src','w','sc','bl'].forEach(id=>$(id).addEventListener('input',update));
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml'}));a.download='konspekt.svg';a.click();};
+$('src').value=EX[sel.value=Object.keys(EX)[0]];update();
+// для автотеста
+window.__render=(name,W)=>{sel.value=name;$('src').value=EX[name];if(W)$('w').value=W;update();return $('meta').textContent+' | '+$('warn').innerText;};
+window.__names=Object.keys(EX);
+</script>
+</body>
+</html>

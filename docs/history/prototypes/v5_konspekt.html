@@ -1,0 +1,2868 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конспект ГРАФ v5</title>
+<style>
+  :root{--bg:#f4f1ea;--ink:#222;--muted:#6b6457;--acc:#993300}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",Arial,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;background:#fff;border-bottom:2px solid var(--acc);position:sticky;top:0;z-index:2}
+  header b{color:var(--acc);font-size:16px}
+  header label{display:flex;gap:6px;align-items:center;color:var(--muted)}
+  select,input,button{font:inherit}
+  button{border:1px solid var(--acc);background:#fff7e0;color:var(--acc);border-radius:6px;padding:3px 10px;cursor:pointer}
+  button.on{background:var(--acc);color:#fff}
+  main{display:grid;grid-template-columns:minmax(300px,38%) 1fr;gap:12px;padding:12px}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  textarea{width:100%;height:calc(100vh - 110px);min-height:300px;font:13px/1.45 Consolas,"Courier New",monospace;padding:10px;border:1px solid #ccc;border-radius:6px;resize:vertical;tab-size:2}
+  .card{background:#fff;border:1px solid #ddd;border-radius:6px;padding:12px;overflow:auto}
+  .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+  .warn{margin-top:8px;font-size:13px}
+  .warn div{padding:4px 8px;border-left:3px solid #d08000;background:#fff8e6;margin:3px 0}
+  .warn div.ok{border-color:#4a9a4a;background:#effaef}
+  #gallery{display:none;padding:12px;max-width:1500px;margin:0 auto}
+  #gallery h2{color:var(--acc);margin:28px 0 8px;font-size:20px;border-bottom:1px solid #d9c9a8}
+  .gi{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin:10px 0 18px}
+  @media (max-width:900px){.gi{grid-template-columns:1fr}}
+  .gi pre{margin:0;background:#fffdf6;border:1px solid #e3d8bf;border-radius:6px;padding:8px;font:12px/1.4 Consolas,monospace;white-space:pre-wrap;overflow:auto}
+  .gi h3{grid-column:1/-1;margin:0;font-size:15px}
+  svg .memo-t{transition:opacity .2s}
+  svg.selfcheck .memo-t{opacity:0}
+  svg.selfcheck .memo.open .memo-t{opacity:1}
+  svg.selfcheck .memo{cursor:pointer}
+  svg.blind text{display:none}
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ab svg{max-width:100%;height:auto}.ab>div{min-width:0}.ab .tag{font-weight:bold;color:var(--acc);margin-bottom:4px}
+  .gi.wide{grid-template-columns:minmax(220px,24%) 1fr}
+  #cnt{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <b>Конспект · ГРАФ v5</b>
+  <label>Предмет <select id="fs"></select></label>
+  <label>Класс <select id="fg"></select></label>
+  <label>Уровень <select id="fl"><option value="">все</option><option value="база">база</option><option value="углубл.">углубл.</option></select></label>
+  <label>Пример <select id="ex"></select></label>
+  <label>Вариант <select id="va"><option value="A">А — текущие правила</option><option value="B">Б — одна ширина + отбивки</option><option value="AB">А и Б рядом</option></select></label>
+  <span id="cnt"></span>
+  <label>Ширина <input id="w" type="range" min="420" max="900" value="680"></label>
+  <label><input id="sc" type="checkbox"> Самопроверка</label>
+  <label><input id="bl" type="checkbox"> Слепыш</label>
+  <label><input id="bw" type="checkbox"> Ч/б печать</label>
+  <button id="gal">Галерея всех примеров</button>
+  <button id="dl">Скачать SVG</button>
+</header>
+<main id="editor">
+  <textarea id="src" spellcheck="false"></textarea>
+  <section><div class="card"><div class="meta" id="meta"></div><div id="pic"></div></div><div class="warn" id="warn"></div></section>
+</main>
+<div id="gallery"></div>
+<script>"use strict";
+/* =====================================================================
+   ГРАФ v2 — единый язык конспектов (ГРАФ + ГНОМ + МОЛНИЯ)
+   Движок раскладки: текст → SVG
+   ===================================================================== */
+const PAL={color:{line:'#993300',fill:'#FFFF99',orange:'#FFCC66',mark:'#CC6600',tie:'#FF9933',ex:'#FFFFFF',exb:'#333333',code:'#F6F3EA',codeb:'#C9BFA6',sep:'#D8C8A8'},
+  bw:{line:'#222222',fill:'#E6E6E6',orange:'#C8C8C8',mark:'#444444',tie:'#666666',ex:'#FFFFFF',exb:'#000000',code:'#F2F2F2',codeb:'#999999',sep:'#BBBBBB'}};
+const C={...PAL.color};
+let FS=13, LH=16;const MONO='Consolas, "Courier New", monospace', SANS='Arial, Helvetica, sans-serif';
+let WARN=[];
+const cx2d=document.createElement('canvas').getContext('2d');
+function tw(t,bold,size,mono){cx2d.font=(bold?'bold ':'')+(size||FS)+'px '+(mono?MONO:SANS);return cx2d.measureText(t).width;}
+const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','−':'⁻','(':'⁽',')':'⁾','=':'⁼',...Object.fromEntries([...'abcdefghijklmnoprstuvwxyz'].map((c,i)=>[c,'ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ'[i]]))};
+const SUB={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','a':'ₐ','e':'ₑ','x':'ₓ','n':'ₙ','m':'ₘ','k':'ₖ','т':'т','ж':'ж'};
+const supify=s=>[...s].map(ch=>SUP[ch]||ch).join(''), subify=s=>[...s].map(ch=>SUB[ch]||ch).join('');
+// «Невидимая математика» прототипа: в программе здесь работает KaTeX
+function texArgs(f,cmd,n,fn){ // \cmd{a}{b} или \cmd12 — аргумент в скобках или один символ
+  let out='',i=0;const key='\\'+cmd;
+  while(true){const j=f.indexOf(key,i);if(j<0){out+=f.slice(i);break;}
+    const after=f[j+key.length];if(after&&/[A-Za-z]/.test(after)){out+=f.slice(i,j+key.length);i=j+key.length;continue;}
+    out+=f.slice(i,j);let k=j+key.length;const args=[];
+    for(let a=0;a<n;a++){while(f[k]===' ')k++;if(f[k]==='{'){let d=0,e=k;for(;e<f.length;e++){if(f[e]==='{')d++;else if(f[e]==='}'&&--d===0)break;}args.push(f.slice(k+1,e));k=e+1;}else if(k<f.length){args.push(f[k]);k++;}}
+    out+=fn(...args);i=k;}
+  return out;}
+const grp=a=>/^[\wА-Яа-я.,]+$|^\\?[A-Za-z]+$/.test(a.trim())?a.trim():'('+a.trim()+')';
+function mathText(f){
+  f=f.replace(/\\q?quad/g,'  ').replace(/\\bar\s*\{?([A-Za-z])\}?/g,'$1̄').replace(/\\left|\\right/g,'');
+  f=texArgs(f,'frac',2,(a,b)=>grp(a||'')+'/'+grp(b||''));f=texArgs(f,'dfrac',2,(a,b)=>grp(a||'')+'/'+grp(b||''));
+  f=texArgs(f,'sqrt',1,a=>'√'+grp(a||''));
+  return f.replace(/\\vec\s*\{?([A-Za-zА-Яа-я])\}?/g,'$1').replace(/\\(log|ln|sin|cos|tg|ctg|lg)(?![a-z])/g,'$1').replace(/\\int/g,'∫').replace(/\\infty/g,'∞').replace(/\\to/g,'→').replace(/\\cup/g,'∪').replace(/\\in\b/g,'∈').replace(/\\neg/g,'¬').replace(/\\sum/g,'Σ').replace(/\\sigma/g,'σ').replace(/\\nu/g,'ν').replace(/\\omega/g,'ω').replace(/\\varphi/g,'φ').replace(/\\varepsilon/g,'ε')
+    .replace(/\\pmod\s*(\S+)/g,'(mod $1)').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g,'$1/$2').replace(/\\cdot/g,'·').replace(/\\ne/g,'≠').replace(/\\le/g,'≤').replace(/\\ge/g,'≥')
+    .replace(/\\pm/g,'±').replace(/\\sqrt\{([^}]*)\}/g,'√$1').replace(/\\sqrt/g,'√').replace(/\\rho/g,'ρ').replace(/\\pi/g,'π').replace(/\\Delta/g,'Δ').replace(/\\alpha/g,'α').replace(/\\angle/g,'∠').replace(/\\triangle/g,'△').replace(/\\parallel/g,'∥').replace(/\\perp/g,'⊥')
+    .replace(/\\%/g,'%').replace(/\\,/g,' ').replace(/\\text\{([^}]*)\}/g,'$1')
+    .replace(/\^\{([^}]*)\}/g,(m,a)=>supify(a)).replace(/\^(.)/g,(m,a)=>supify(a))
+    .replace(/_\{([^}]*)\}/g,(m,a)=>subify(a)).replace(/_(.)/g,(m,a)=>subify(a))
+    .replace(/<=/g,'≤').replace(/>=/g,'≥').replace(/!=/g,'≠').replace(/\*/g,'·').replace(/sqrt/g,'√').replace(/[{}]/g,'');
+}
+function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\->/g,'->').replace(/\$([^$]+)\$/g,(m,f)=>mathText(f)).replace(/`([^`]*)`/g,'$1').replace(/\uE000/g,'$');}
+// слово шире строки — переносим по слогам: после гласной, хвост не короче 2 букв и с гласной
+function hyph(w,maxW,bold,size,mono){if(mono||tw(w,bold,size,mono)<=maxW||!/^[а-яё]{6,}$/i.test(w))return[w];
+  const V=/[аеёиоуыэюя]/i,Cn=/[бвгджзклмнпрстфхцчшщ]/i;let best=0;
+  for(let i=2;i<=w.length-2;i++){const a=w[i-1],b=w[i],tail=w.slice(i),head=w.slice(0,i);
+    if(!V.test(head)||!V.test(tail))continue;
+    if(/^[ьъй]/i.test(tail)||/^[бвгджзклмнпрстфхцчшщ][ьъ]/i.test(tail))continue; // не «-льник», не «-ь…»
+    let ok=false;
+    if(V.test(a))ok=!(Cn.test(b)&&b.toLowerCase()===(w[i+1]||'').toLowerCase()); // после гласной, но не перед удвоенной: «-нная»
+    else if(/[ьй]/i.test(a))ok=true;                                              // после ь, й: «прямоуголь-ник»
+    else if(Cn.test(a)&&a.toLowerCase()===b.toLowerCase())ok=true;               // между удвоенными: «рамм» → «рам-мы»
+    else if(/[рлмн]/i.test(a)&&Cn.test(b)&&V.test(w[i+1]||''))ok=true;              // после сонорной перед согласной: «пар-та», «кон-фета»
+    if(ok&&tw(head+'-',bold,size,mono)<=maxW)best=i;}
+  if(!best)return[w];return[w.slice(0,best)+'-',...hyph(w.slice(best),maxW,bold,size,mono)];}
+// неразрывные связки (Мильчин): короткий предлог/союз + следующее слово; слово + тире; число + единица; группы разрядов; № и §
+let HYPH=true; // переносы по слогам разрешены (в заголовках, указателях и шапках — нет)
+const NB=' ';
+const GLUE_PRE=/^(в|во|на|с|со|к|ко|и|а|но|не|ни|по|о|об|обо|от|до|из|за|у|для|при|без|над|под|про|или|что|же|да|№|§)$/i;
+const UNIT_B='кг|г|мг|т|м|см|мм|км|дм|с|мс|ч|мин|сут|Н|кН|Дж|кДж|МДж|Вт|кВт|В|кВ|мВ|А|мА|Ом|кОм|Па|кПа|МПа|К|°C|°С|Вб|Тл|Гц|кГц|МГц|л|мл|бит|байт|Кбайт|Мбайт|Гбайт|%|‰|руб\\.?|р\\.|коп\\.?|шт\\.?';
+const UNIT_RE=new RegExp('^('+UNIT_B+')([/·]('+UNIT_B+')|[²³])*[.,;:!?)]*$');
+function glueWords(words){const u=[];let gl=false;
+  for(const w of words){
+    if(u.length&&(gl||/^[—–]$/.test(w)||(/\d$/.test(u[u.length-1])&&(/^\d{3}([,.]\d+)?[.,;:)]*$/.test(w)||UNIT_RE.test(w))))){u[u.length-1]+=NB+w;}
+    else u.push(w);
+    gl=GLUE_PRE.test(w)&&!/^[—–]$/.test(w);}
+  return u;}
+function splitNL(s){const out=[];let cur='',m=false,c=false;
+  for(let i=0;i<s.length;i++){const ch=s[i];if(ch==='$')m=!m;else if(ch==='`')c=!c;
+    if(!m&&!c&&ch==='\\'&&s[i+1]==='n'){out.push(cur);cur='';i++;continue;}
+    if(!m&&!c&&ch==='\\'&&s[i+1]==='t'){cur+='\uE001';i++;continue;}cur+=ch;}
+  out.push(cur);return out;}
+function wrap(text,maxW,bold,size,mono){
+  const out=[];const T=x=>x.replace(//g,'    ');
+  const lay=(units,W0,noH)=>{const ls=[];let cur='';
+    for(const w0 of units){const parts=(HYPH&&!noH&&!w0.includes(NB))?hyph(w0,W0,bold,size,mono):[w0];
+      for(const w of parts){const t=cur?cur+' '+w:w;if(tw(T(t),bold,size,mono)<=W0||!cur)cur=t;else{ls.push(cur);cur=w;}}}
+    ls.push(cur);return ls;};
+  for(const part of splitNL(String(text))){
+    const words=pretty(part).split(/[ \t\r\n]+/).filter(Boolean);
+    const units=mono?words:glueWords(words);
+    let ls=lay(units,maxW);
+    // короткая концевая строка: подбираем меньшую ширину с тем же числом строк — строки выравниваются по длине
+    if(!mono&&ls.length>=2){const wl=l=>tw(T(l),bold,size,mono);const last=wl(ls[ls.length-1]),mx=Math.max(...ls.map(wl));
+      // выравниваем без новых переносов и без вылезания за ширину
+      const fits=L2=>L2.every(l=>wl(l)<=maxW+0.5);
+      if(last<mx*0.4&&!ls.some(l=>/-$/.test(l))){let lo=maxW*0.55,hi=maxW;for(let k=0;k<12;k++){const m=(lo+hi)/2;const t2=lay(units,m,true);if(t2.length===ls.length&&fits(t2))hi=m;else lo=m;}
+        const b2=lay(units,hi,true);if(b2.length===ls.length&&fits(b2))ls=b2;}}
+    out.push(...ls);}
+  return out.length?out:[''];
+}
+function longWord(t,bold,size){return Math.max(0,...pretty(String(t||'')).split(/\s+/).filter(Boolean).map(w=>tw(w,bold,size)));}
+function fitPW(memos,base,max){return Math.min(max,Math.max(base,...memos.map(m=>longWord(m.pointer)+30)));}
+function wrapNH(text,maxW,bold,size,mono){const h=HYPH;HYPH=false;try{return wrap(text,maxW,bold,size,mono);}finally{HYPH=h;}}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const n1=v=>(+v).toFixed(1);
+function txt(lines,x,y,o={}){
+  const a=o.anchor||'start',sz=o.size||FS,lh=o.lh||LH;
+  return lines.map(l=>String(l).replace(/\uE001/g,'\u00A0\u00A0\u00A0\u00A0')).map((l,i)=>`<text x="${n1(x)}" y="${n1(y+i*lh+sz-2)}" font-size="${sz}" text-anchor="${a}"${o.bold?' font-weight="bold"':''}${o.italic?' font-style="italic"':''}${o.mono?` font-family='${MONO}' xml:space="preserve"`:''} fill="${o.fill||'#111'}">${esc(l)}</text>`).join('');
+}
+const G=(x,y,s)=>`<g transform="translate(${n1(x)},${n1(y)})">${s}</g>`;
+const L=(x1,y1,x2,y2,c,w,dash)=>`<line x1="${n1(x1)}" y1="${n1(y1)}" x2="${n1(x2)}" y2="${n1(y2)}" stroke="${c||C.line}" stroke-width="${w||1.5}"${dash?` stroke-dasharray="${dash}"`:''}/>`;
+const rect=(x,y,w,h,f,s,rx,sw,dash)=>`<rect x="${n1(x)}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}" rx="${rx||0}" fill="${f}" stroke="${s||C.line}" stroke-width="${sw||1.5}"${dash?` stroke-dasharray="${dash}"`:''}/>`;
+const memoRect=(x,y,w,h)=>rect(x+2,y+2,w,h,C.line,C.line)+rect(x,y,w,h,C.fill);
+function pointerPath(x,y,w,h){const d=Math.min(14,h/2);return `<path d="M${n1(x)},${n1(y)}H${n1(x+w-d)}L${n1(x+w)},${n1(y+h/2)}L${n1(x+w-d)},${n1(y+h)}H${n1(x)}Z" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/>`;}
+function counterPath(x,y,w,h){const d=Math.min(14,h/2);return `<path d="M${n1(x+d)},${n1(y)}H${n1(x+w)}V${n1(y+h)}H${n1(x+d)}L${n1(x)},${n1(y+h/2)}Z" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/>`;}
+function headerEllipse(x,y,w,h){const cx=x+w/2,cy=y+h/2;
+  return `<ellipse cx="${n1(cx)}" cy="${n1(cy)}" rx="${n1(w/2)}" ry="${n1(h/2)}" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/><ellipse cx="${n1(cx)}" cy="${n1(cy)}" rx="${n1(w/2-4)}" ry="${n1(h/2-3)}" fill="none" stroke="${C.line}" stroke-width="1.2"/>`;}
+function ellY(x,ex,ey,ew,eh,bottom){const cx=ex+ew/2,cy=ey+eh/2,rx=ew/2,ry=eh/2;const k=Math.max(0,1-((x-cx)/rx)**2);return cy+(bottom?1:-1)*ry*Math.sqrt(k);}
+function wedge(b1x,b1y,b2x,b2y,ax,ay,f,s){ // клин выноски; рисовать ПОСЛЕ фигуры выноски
+  return `<g data-k="tail"><path d="M${n1(b1x)},${n1(b1y)}L${n1(ax)},${n1(ay)}L${n1(b2x)},${n1(b2y)}" fill="${f}" stroke="${s}" stroke-width="1.2"/>`+L(b1x+(b2x-b1x)*0.1,b1y+(b2y-b1y)*0.1,b2x-(b2x-b1x)*0.1,b2y-(b2y-b1y)*0.1,f,2.8)+'</g>';
+}
+function blockArrow(cx,y,w,h,up){const sw=w*0.45,hh=h*0.5;
+  return up?`<path d="M${cx-sw/2},${y+h}V${y+hh}H${cx-w/2}L${cx},${y}L${cx+w/2},${y+hh}H${cx+sw/2}V${y+h}" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/>`
+           :`<path d="M${cx-sw/2},${y}V${y+hh}H${cx-w/2}L${cx},${y+h}L${cx+w/2},${y+hh}H${cx+sw/2}V${y}" fill="${C.fill}" stroke="${C.line}" stroke-width="1.5"/>`;}
+
+/* ============================ РАЗБОР ТЕКСТА ============================ */
+const OPT=/^(схема|ширина|начать с|нумерация|класс|язык)\s*[:=]\s*(.+)$/;
+const KINDS='теорема|свойство|признак|следствие|формула|аксиома|алгоритм|закон|метод|команда|единица';
+const lowerFirst=s=>s.length>1&&/[а-яёa-z]/.test(s[1])?s[0].toLowerCase()+s.slice(1):s;
+// английские синонимы ключевых слов (регистр важен, как в Python: только строчные)
+const EN={topic:'тема',link:'связка',arrow:'стрелка',rule:'правило',example:'пример',counterexample:'контрпример',relation:'связь',
+  callout:'выноска',note:'уточнение',picture:'рисунок',image:'рисунок',code:'код',def:'опр',theorem:'теорема',property:'свойство',
+  criterion:'признак',corollary:'следствие',formula:'формула',axiom:'аксиома',algorithm:'алгоритм',law:'закон',method:'метод',
+  command:'команда',unit:'единица',scheme:'схема',grade:'класс',width:'ширина',numbering:'нумерация',lang:'язык',start:'начать с'};
+const ENPOS={below:'снизу',right:'справа'};
+const SCHEME_EN={gnome:'гном',battery:'батарея',ladder:'лестница',ruler:'линейка',chess:'шахматы',comb:'гребенка',epaulets:'эполеты',
+  faceoff:'очная ставка',tree:'дерево',rank:'шеренга',scene:'сцена',snake:'двуглавый змей'};
+const KW=new Set(['тема','связка','стрелка','двойная','правило','пример','контрпример','связь','выноска','уточнение','пояснение','рисунок','код','опр','определение','схема','класс','ширина','нумерация','начать','язык','профиль',...KINDS.split('|')]);
+function scanSegs(s){s=String(s||'');const out=[];let buf='',i=0,math=false,code=false;
+  const flush=()=>{if(buf)out.push({t:'txt',text:buf});buf='';};
+  while(i<s.length){const ch=s[i];
+    if(ch==='\\'&&(s[i+1]==='['||s[i+1]===']')){buf+=s[i+1];i+=2;continue;}
+    if(ch==='$'&&!code){math=!math;buf+=ch;i++;continue;}
+    if(ch==='`'&&!math){code=!code;buf+=ch;i++;continue;}
+    if(ch==='['&&!math&&!code){let d=1,j=i+1,m2=false;
+      let c2=false;while(j<s.length&&d>0){if(s[j]==='$'&&!c2)m2=!m2;else if(s[j]==='`'&&!m2)c2=!c2;else if(!m2&&!c2&&s[j]==='[')d++;else if(!m2&&!c2&&s[j]===']')d--;if(d>0)j++;}
+      if(d===0&&s[j+1]==='{'){const k=s.indexOf('}',j+2);if(k>0){flush();out.push({t:'seg',text:s.slice(i+1,j),label:s.slice(j+2,k)});i=k+1;continue;}}}
+    buf+=ch;i++;}
+  flush();return out;}
+const hasSeg=t=>scanSegs(t).some(x=>x.t==='seg');
+// разделить строку по разделителю вне $…$ и `…`
+function splitOutside(s,sep){const parts=[];let buf='',math=false,code=false;
+  for(let i=0;i<s.length;i++){const ch=s[i];if(ch==='$'&&!code)math=!math;else if(ch==='`'&&!math)code=!code;
+    if(!math&&!code&&s.startsWith(sep,i)){parts.push(buf);buf='';i+=sep.length-1;continue;}buf+=ch;}
+  parts.push(buf);return parts;}
+function normKw(t){
+  let m=t.match(/^([a-z]+)(\s+(below|right))?(?=\s*:|\s*->|\s+\S.*:)/);
+  if(m&&EN[m[1]]&&(/^[a-z]+(\s+(below|right))?\s*:/.test(t)||/^(rule|relation)\b/.test(t)))
+    t=EN[m[1]]+(m[3]?' '+ENPOS[m[3]]:'')+t.slice(m[0].length);
+  m=t.match(/^[а-яё]+/);if(m&&m[0].includes('ё')&&KW.has(m[0].replace(/ё/g,'е')))t=m[0].replace(/ё/g,'е')+t.slice(m[0].length);
+  return t;
+}
+const REL=/^(<=>|=>|<=|>=|!=|=|≡|⇒|⇔|≤|≥|<|>|≠|≈|→)\s/;
+const RELSYM={'<=>':'⇔','=>':'⇒','<=':'≤','>=':'≥','!=':'≠'};
+function classify(t){
+  let m;t=t.replace(/\\\$/g,'');t=normKw(t);
+  if(m=t.match(/^профиль\s*:\s*(.+)$/)){WARN.push('«профиль:» больше не нужен — ГНОМ выбирается сам; для явного выбора: «схема: гном»');return{kind:'opt',key:'схема',val:m[1].trim()};}
+  if(m=t.match(OPT))return{kind:'opt',key:m[1],val:m[2].trim()};
+  // 1) ключевые слова (только строчные, только в начале строки)
+  if(m=t.match(/^тема\s*:\s*(.*)$/))return{kind:'header',text:m[1]};
+  if(m=t.match(/^вопрос\s*:\s*(.+)$/)){WARN.push('«вопрос:» устарело — пишите «тема:»');return{kind:'header',text:m[1]};}
+  if(m=t.match(/^почему\s*:\s*(.+)$/)){WARN.push('«почему:» устарело — пишите «стрелка:»');return{kind:'arrow',text:m[1]};}
+  if(m=t.match(/^понятие\s*:\s*(.+->.*)$/)){WARN.push('«понятие:» устарело — пишите просто «термин -> ответ»');t=m[1];}
+  if(m=t.match(/^связка\s*:\s*(.*)$/))return{kind:'link',parts:splitOutside(m[1],'|').map(s=>s.trim())};
+  if(m=t.match(/^(двойная\s+)?стрелка\s*:\s*(.*)$/))return{kind:'arrow',dbl:!!m[1],text:m[2]};
+  if(m=t.match(/^правило\s*(?:(?:→|->)\s*([^:]+?))?\s*:\s*(.*)$/))return{kind:'rule',targets:m[1]?m[1].split(',').map(s=>s.trim().replace(/^[«"]|[»"]$/g,'')).filter(Boolean):[],text:m[2]};
+  if(m=t.match(/^(контрпример|пример)\s*:\s*(.*)$/))return{kind:'example',counter:m[1]==='контрпример',text:m[2]};
+  if(m=t.match(/^связь\s+(.+?)\s*(?:→|->)\s*(.+?)\s*:\s*(.*)$/))return{kind:'dep',a:m[1].replace(/^[«"]|[»"]$/g,''),b:m[2].replace(/^[«"]|[»"]$/g,''),text:m[3]};
+  if(m=t.match(/^(выноска|уточнение|пояснение)(?:\s+(снизу|справа))?\s*:\s*(.*)$/))return{kind:'callout',square:m[1]==='уточнение',pos:m[2]||'',text:m[3]};
+  if(m=t.match(/^рисунок\s*:\s*(.*)$/))return{kind:'image',text:m[1]};
+  if(m=t.match(/^код\s*:\s?(.*)$/))return{kind:'code',text:m[1]};
+  if(m=t.match(/^!\[([^\]]*)\]\(([^)]*)\)$/))return{kind:'image',text:m[1]||m[2]};
+  if(t.startsWith('`')&&(t.split('`').length-1)%2===1)return{kind:'code',text:t.slice(1)};
+  // 2) маркеры начала строки сильнее операторов внутри строки
+  const opInside=x=>splitOutside(x,'->').length>1||splitOutside(x,'><').length>1;
+  const mk=(kind,text,extra)=>{if(opInside(text))WARN.push(`Строка «${t.slice(0,40)}»: начинается с маркера, поэтому «->»/«><» внутри показаны как текст. Для запоминателя или сравнения уберите маркер.`);return{kind,text,...extra};};
+  if(m=t.match(/^[-–]\s+(.*)$/))return mk('item',m[1]);
+  if(m=t.match(/^(\d+[.)])\s+(.*)$/))return mk('item',m[1]+' '+m[2],{num:true});
+  if(m=t.match(/^[*•]\s+(.*)$/))return mk('marker',m[1]);
+  if(m=t.match(/^\|\s+(.*)$/))return{kind:'bar',text:m[1]};
+  if(m=t.match(/^\}\s*(.*)$/))return{kind:'brace',text:m[1]};
+  if(m=t.match(/^\$\$(.*)\$\$$/))return{kind:'formula',text:m[1]};
+  if(REL.test(t))return{kind:'text',text:t,rel:true};   // строка выкладки
+  // 3) операторы: «><» сильнее «->»
+  {const pp=splitOutside(t,'><');if(pp.length>=2){if(splitOutside(t,'->').length>1)WARN.push(`Строка «${t.slice(0,40)}»: и «><», и «->» — понято как сравнение.`);
+    return{kind:'pair',left:pp[0].trim(),right:pp.slice(1).join('><').trim()};}}
+  if((m=splitOutside(t,'->')).length>=2){m=[t,m[0],m.slice(1).join('->')];
+    let left=m[1].trim(),def=false,mm;
+    if(mm=left.match(/^(?:опр|определение)\s*:\s*(.+)$/)){def=true;const term=mm[1].trim();
+      left=term.split(/\s+/).length<=2?'Что такое '+lowerFirst(term):term;}
+    else if(mm=left.match(new RegExp('^('+KINDS+')\\s*:\\s*(.+)$'))){left=mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2].trim();}
+    return{kind:'memo',pointer:left,text:m[2].trim(),def};
+  }
+  {const mk2=t.match(new RegExp('^('+KINDS+')\\s*:\\s*(.+)$'));if(mk2)return{kind:'memo',pointer:mk2[1][0].toUpperCase()+mk2[1].slice(1),text:mk2[2].trim(),def:false};}
+  return{kind:'text',text:t};
+}
+// обоснование в конце строки выкладки: «… {причина}», не после «]»
+function splitReason(s){s=s.trimEnd();if(!s.endsWith('}'))return[s,''];
+  let d=0,math=false,code=false;
+  for(let i=s.length-1;i>=0;i--){const ch=s[i];if(ch==='$')math=!math;else if(ch==='`')code=!code;
+    if(math||code)continue;if(ch==='}')d++;else if(ch==='{'){d--;if(d===0){const pre=s.slice(0,i).trimEnd();if(pre.endsWith(']'))return[s,''];return[pre,s.slice(i+1,-1).trim()];}}}
+  return[s,''];}
+// что может стоять внутри чего (вариант Б: «фигура и её содержимое»)
+const INNER=['marker','bar','brace','formula','code','image','text','blank'], HANG=['callout','example','rule'];
+const ALLOW={root:['header','link','memo','pair','item','group','rule','example','arrow','image','code','callout','marker','text','dep','formula','blank'],
+  header:['callout','rule','blank'],memo:[...INNER,...HANG,'item'],item:[...INNER,...HANG,'item','group'],group:['item','group','text','marker','callout','example','blank'],
+  pair:['marker','blank'],example:['dep','text','code','formula','blank','marker'],rule:[...INNER],callout:['marker','text','formula','code','blank','bar'],
+  link:[],arrow:[],image:[],code:[],dep:[],marker:['marker','text'],bar:[],brace:[],formula:[],text:[...INNER,...HANG,'item','group']};
+const KNAME={header:'тема:',link:'связка:',memo:'запоминатель',pair:'сравнение ><',item:'пункт',group:'группа',rule:'правило:',example:'пример:',arrow:'стрелка:',image:'рисунок:',code:'код',callout:'выноска:',marker:'маркер *',bar:'черта |',brace:'скобка }',formula:'формула $$',dep:'связь',text:'текст'};
+function validate(node){for(const c of node.children){const al=ALLOW[node.kind]||[];
+    if(c.kind!=='blank'&&!al.includes(c.kind))WARN.push(`«${KNAME[c.kind]||c.kind}» не может стоять внутри «${KNAME[node.kind]||node.kind}» — проверьте отступ.`);
+    validate(c);}}
+function parse(src){
+  const root={kind:'root',children:[],indent:-1},stack=[root],opts={};
+  const srcLines=src.replace(/\t/g,'    ').split('\n');const joined=[];
+  for(const l of srcLines){if(joined.length&&/\\$/.test(joined[joined.length-1])&&!/\\\\$/.test(joined[joined.length-1]))joined[joined.length-1]=joined[joined.length-1].slice(0,-1)+' '+l.trim();else joined.push(l);}
+  for(const raw of joined){
+    if(/^\s*#/.test(raw))continue;
+    const t=raw.trim();
+    if(!t){const top=stack[stack.length-1];if(top!==root)top.children.push({kind:'blank',children:[]});continue;}
+    const ind=raw.match(/^ */)[0].length;
+    const n=classify(t);n.indent=ind;n.children=[];
+    if(n.kind==='code'){n.text=raw.slice(raw.indexOf('`')+1);} // пробелы кода сохраняем
+    while(stack[stack.length-1].indent>=ind&&!(n.kind==='code'&&stack[stack.length-1].kind!=='root'&&stack.length>1&&stack[stack.length-1].indent===ind&&false))stack.pop();
+    if(n.kind==='opt'){opts[n.key]=n.val;continue;}
+    stack[stack.length-1].children.push(n);stack.push(n);
+  }
+  // «*… / >< / *…» — пара списков
+  {const k=root.children,out=[];for(let i=0;i<k.length;i++){const c=k[i];
+    if(c.kind==='pair'&&!c.left&&!c.right&&!c.children.length){const lz=[];while(out.length&&out[out.length-1].kind==='marker')lz.unshift(out.pop());
+      const rz=[];while(i+1<k.length&&k[i+1].kind==='marker')rz.push(k[++i]);
+      c.lz=lz.map(m=>({t:'m',text:m.text}));c.rz=rz.map(m=>({t:'m',text:m.text}));}
+    out.push(c);}root.children=out;}
+  // связь после примера относится к нему
+  {const k=root.children,out=[];for(const c of k){if(c.kind==='dep'){const last=[...out].reverse().find(q=>q.kind==='example');if(last){last.children.push(c);continue;}}out.push(c);}root.children=out;}
+  (function fix(node){for(const c of node.children){fix(c);
+    if((c.kind==='text'||c.kind==='item')&&!c.rel&&c.children.some(k=>['item','group'].includes(k.kind)||(k.kind==='text'&&!k.rel)))c.kind='group';
+    else if(c.kind==='text'&&node.kind==='root'&&!c.rel)c.kind='item';}})(root);
+  validate(root);
+  return{root,opts};
+}
+function content(node){
+  const z=[];const pushP=(text,gap)=>{const fm=String(text).match(/^\$\$(.*)\$\$$/);z.push(fm?{t:'f',text:fm[1],gap}:{t:hasSeg(text)?'rz':'p',text,gap});};
+  if(node.text)pushP(node.text);
+  let gap=false;
+  for(const c of node.children){
+    if(c.kind==='blank'){gap=true;continue;}
+    if(c.kind==='text'&&c.rel){const last=z[z.length-1];const [ex,why]=splitReason(c.text.replace(REL,''));const sign=c.text.match(REL)[1];
+      const row={sign:RELSYM[sign]||sign,ex:ex.trim(),why};
+      if(last&&last.t==='deriv')last.rows.push(row);
+      else if(last&&(last.t==='p'||last.t==='rz')&&!gap){z.pop();const [e0,w0]=splitReason(last.text);z.push({t:'deriv',rows:[{sign:'',ex:e0,why:w0},row]});}
+      else z.push({t:'deriv',rows:[row],gap});
+      gap=false;continue;}
+    if(c.kind==='text'){const last=z[z.length-1];if(last&&last.t==='p'&&!gap&&!hasSeg(c.text))last.text+=' '+c.text;else pushP(c.text,gap);}
+    else if(c.kind==='marker'||c.kind==='item')z.push({t:'m',text:c.text,gap});
+    else if(c.kind==='bar')z.push({t:'bar',text:c.text,gap});
+    else if(c.kind==='formula')z.push({t:'f',text:c.text,gap});
+    else if(c.kind==='code'){const last=z[z.length-1];if(last&&last.t==='code'&&!gap)last.lines.push(c.text);else z.push({t:'code',lines:[c.text],gap});}
+    else if(c.kind==='image')z.push({t:'img',text:c.text,gap});
+    else if(c.kind==='brace'){const items=[];while(z.length&&z[z.length-1].t==='m')items.unshift(z.pop());z.push({t:'brace',items,text:c.text,gap});}
+    gap=false;
+  }
+  return z;
+}
+
+/* ================== РАЗБОР (бывшая МОЛНИЯ): [часть]{подпись} ================== */
+function sentenceTokens(s){return scanSegs(s);}
+function pill(text,maxW){const ls=wrap(text,maxW-18);const w=Math.max(...ls.map(l=>tw(l)))+20;return{ls,w,h:ls.length*LH+8};}
+function spreadRow(arr,lo,hi){arr.sort((p,q)=>p.t-q.t);arr.forEach(o=>o.x=o.t-o.c.w/2);
+  for(let i=0;i<arr.length;i++)arr[i].x=Math.max(arr[i].x,lo,i?arr[i-1].x+arr[i-1].c.w+8:lo);
+  for(let i=arr.length-1;i>=0;i--)arr[i].x=Math.min(arr[i].x,i<arr.length-1?arr[i+1].x-arr[i].c.w-8:hi-arr[i].c.w);}
+/* razbor: text с сегментами. o.box — белая рамка «Пример»; o.rules — правила-выноски со стрелками; o.deps — ломаные стрелки */
+let NUMNEAR=false; // номер ГНОМа вплотную к блоку (как рис. 30 Паронджанова); выноски справа уходят под блок
+let STRICT=false; // вариант Б: одна ширина в колонке сцены, отбивки внутри фигуры
+let LSTYLE='auto'; // стиль подписей разбора: auto | pill | inset | white | brace
+function razbor(text,maxW,o={}){
+  const fs=o.size||FS,bold=!!o.bold,pad=o.box?14:0;const style=o.style||'pill';
+  const toks=sentenceTokens(text);const segH=fs+9,lh=segH+7;const innerW=maxW-2*pad;
+  const lines=[[]];let cw=0;const segs=[];
+  const add=p=>{if(cw+p.w>innerW&&cw>0){lines.push([]);cw=0;if(p.t==='txt'&&!p.text.trim())return;}
+    p.x=cw;lines[lines.length-1].push(p);cw+=p.w;};
+  for(const t of toks){
+    if(t.t==='txt')(t.text.match(/\$[^$]*\$|`[^`]*`|\s+|[^\s$`]+|[$`]/g)||[]).forEach(w=>add({t:'txt',text:w,w:tw(pretty(w),bold,fs,/^`/.test(w))}));
+    else{const empty=!t.text.trim();const mono=/^`[^`]*`$/.test(t.text.trim());const pt=pretty(t.text);
+      const w=empty?10:tw(pt,bold,fs,mono)+(style==='brace'?4:(pt.trim().length<=2?12:16));const seg={...t,pt,w,mono,empty};segs.push(seg);add(seg);}
+  }
+  const lineW=lines.map(l=>l.length?Math.max(...l.map(p=>p.x+p.w)):0);const contentW=Math.max(...lineW,10);
+  const boxW=o.box?Math.min(maxW,Math.max(o.minBox||0,contentW+2*pad+4)):contentW;const bx=o.box?(maxW-boxW)/2:0;
+  const findSeg=n=>{const q=n.toLowerCase();return segs.find(g=>g.label.toLowerCase()===q)||segs.find(g=>pretty(g.text).trim().toLowerCase()===q)||segs.find(g=>g.label.toLowerCase().includes(q))||segs.find(g=>g.text&&pretty(g.text).toLowerCase().includes(q));};
+  const rules=o.rules||[],deps=o.deps||[];let svg='';
+  lines.forEach((ln,li)=>{const lx=bx+(o.box?(boxW-lineW[li])/2:0);ln.forEach(p=>{p.ax=lx+p.x;});});
+  let ruleW=rules.length?Math.min(250,(maxW-(rules.length-1)*12)/rules.length):0;
+  // правило при связях: ставим с той стороны связи, где нет её второго конца, — стрелка правила входит в цель сбоку и не пересекает связь
+  // подпись связи сдвигается прочь от правила: её край — у конца связи
+  const depPillX=(ax,bxx,w,side)=>{const mx=(ax+bxx)/2;if(side==='L')return Math.max(mx-w/2,Math.min(ax,bxx)-8);if(side==='R')return Math.min(mx-w/2,Math.max(ax,bxx)+8-w);return mx-w/2;};
+  const depG=deps.map(d=>{const A=findSeg(d.a),B=findSeg(d.b);if(!A||!B)return null;const c=pill(d.text,220);const ax=A.ax+A.w/2,bxx=B.ax+B.w/2;
+    return{L:Math.min(A.ax,B.ax,depPillX(ax,bxx,c.w,'L')),R:Math.max(A.ax+A.w,B.ax+B.w,depPillX(ax,bxx,c.w,'R')+c.w)};}).filter(Boolean);
+  let ruleSide=null,ruleX0=null;
+  if(rules.length&&depG.length){const n=rules.length;const depL=Math.min(...depG.map(q=>q.L)),depR=Math.max(...depG.map(q=>q.R));
+    const tgs=rules.flatMap(r=>r.targets.map(findSeg).filter(Boolean));const tc=tgs.length?tgs.reduce((q,g)=>q+g.ax+g.w/2,0)/tgs.length:maxW/2;
+    const need=Math.max(...rules.map(r=>Math.max(longWord(r.text)+24,Math.min(tw(pretty(r.text))+24,130))));
+    const wR=(maxW-(depR+18)-(n-1)*12)/n,wL=(depL-18-(n-1)*12)/n;
+    for(const sd of (tc-depL)<(depR-tc)?['L','R']:['R','L']){const wA=sd==='R'?wR:wL;
+      if(wA>=need){ruleSide=sd;ruleW=Math.min(ruleW,wA);ruleX0=sd==='R'?depR+18:depL-18-n*ruleW-(n-1)*12;break;}}}
+  const rl=rules.map(r=>{const ls=wrap(r.text,ruleW-16);return{r,ls,h:ls.length*LH+12};});
+  const rh=rl.length?Math.max(...rl.map(q=>q.h)):0;
+  // полоса связей: высота — по самой высокой подписи связи
+  const dh=deps.length?Math.max(...deps.map(d=>pill(d.text,220).h)):0;
+  const depTop=(rh?rh+14:0)+Math.max(10,dh/2+2);
+  let y=deps.length?depTop+Math.max(20,dh/2+12):(rh?rh+30:0);
+  const boxY=y;const sy=boxY+(o.box?9:0);
+  lines.forEach((ln,li)=>{const lx=bx+(o.box?(boxW-lineW[li])/2:0);ln.forEach(p=>{p.ax=lx+p.x;p.ay=sy+li*lh;});});
+  const boxH=lines.length*lh-7+(o.box?18:0)+(style==='brace'?6:0);
+  if(o.box)svg+=rect(bx,boxY,boxW,boxH,C.ex,C.exb,0,1.6);
+  const pillF=style==='white'?'#fff':C.fill, pillS=style==='white'?C.exb:C.line;
+  lines.forEach(ln=>ln.forEach(p=>{
+    if(p.t==='txt')svg+=txt([pretty(p.text)],p.ax,p.ay+(segH-fs)/2,{bold,size:fs,mono:/^`/.test(p.text)});
+    else if(p.empty)svg+=L(p.ax+p.w/2,p.ay+2,p.ax+p.w/2,p.ay+segH-2,C.exb,1,'2 2'); // пустое место
+    else if(style==='brace'){svg+=txt([p.pt],p.ax+p.w/2,p.ay+(segH-fs)/2,{anchor:'middle',bold,size:fs,mono:p.mono});
+      if(p.label){const y1=p.ay+segH,x1=p.ax+1,x2=p.ax+p.w-1,xm=(x1+x2)/2;svg+=`<path d="M${n1(x1)},${n1(y1-3)}q0,4 4,4H${n1(xm-3)}q3,0 3,4q0,-4 3,-4H${n1(x2-4)}q4,0 4,-4" fill="none" stroke="${C.line}" stroke-width="1.2"/>`;}}
+    else svg+=rect(p.ax+1,p.ay,p.w-2,segH,'#fff',C.exb,segH/2,1.1)+txt([p.pt],p.ax+p.w/2,p.ay+(segH-fs)/2,{anchor:'middle',bold,size:fs,mono:p.mono});
+  }));
+  if(rl.length){const objs=rl.map(q=>{const tg=q.r.targets.map(n=>{const s=findSeg(n);if(!s)WARN.push(`Правило: не найдена часть «${n}» в примере`);return s;}).filter(Boolean);
+      return{q,tg,t:tg.length?tg.reduce((s,g)=>s+g.ax+g.w/2,0)/tg.length:maxW/2,c:{w:ruleW}};});
+    spreadRow(objs,0,maxW);
+    if(ruleSide)objs.sort((a,b)=>a.t-b.t).forEach((ob,i)=>ob.x=ruleX0+i*(ruleW+12));
+    objs.forEach(({q,tg,x})=>{const ry=rh-q.h;svg+=rect(x,ry,ruleW,q.h,C.fill,C.line,3,1.2);
+      tg.forEach(g=>{const sR=ruleSide==='R'&&g.ax+g.w<x+10,sL=ruleSide==='L'&&g.ax>x+ruleW-10;
+        const gx=sR?g.ax+g.w+1:sL?g.ax-1:g.ax+g.w/2,gy=(sR||sL)?g.ay+segH/2:g.ay;const b=sR?x+10:sL?x+ruleW-26:Math.max(x+10,Math.min(x+ruleW-26,gx-8));svg+=wedge(b,ry+q.h,b+16,ry+q.h,gx,gy,C.fill,C.line);});
+      svg+=txt(q.ls,x+ruleW/2,ry+6,{anchor:'middle'});});}
+  deps.forEach(d=>{const A=findSeg(d.a),B=findSeg(d.b);if(!A||!B){WARN.push(`Связь: не найдены части «${d.a}» → «${d.b}»`);return;}
+    const ax=A.ax+A.w/2,bxx=B.ax+B.w/2,top=depTop;
+    svg+=`<path d="M${n1(ax)},${n1(A.ay)}V${n1(top)}H${n1(bxx)}V${n1(B.ay-3)}" fill="none" stroke="${C.line}" stroke-width="1.8"/><path d="M${n1(bxx-5)},${n1(B.ay-9)}L${n1(bxx)},${n1(B.ay)}L${n1(bxx+5)},${n1(B.ay-9)}Z" fill="${C.line}"/>`;
+    const c=pill(d.text,220);const px=Math.max(0,Math.min(maxW-c.w,depPillX(ax,bxx,c.w,ruleSide)));svg+=rect(px,top-c.h/2,c.w,c.h,C.fill,C.line,c.h/2,1.1)+txt(c.ls,px+c.w/2,top-c.h/2+4,{anchor:'middle'});});
+  y=boxY+boxH;
+  // подписи снизу: текст примера НЕ раздвигается; подписи раскладываются по рядам,
+  // хвост — вертикальный, хвосты не пересекают чужие подписи
+  const bl=segs.filter(g=>g.label).map(g=>({g,c:style==='brace'?{ls:wrap(g.label,140,false,FS-1),w:0,h:0}:pill(g.label,150),t:g.ax+g.w/2}));
+  if(bl.length){
+    if(style==='brace')bl.forEach(o=>{o.c.w=Math.max(...o.c.ls.map(l=>tw(l,false,FS-1)))+6;o.c.h=o.c.ls.length*(FS+2)+2;});
+    const rowH=Math.max(...bl.map(o=>o.c.h))+8;const gap=10;const placed=[];
+    // сначала — один ряд: порядок подписей = порядку частей, хвосты могут идти наклонно и не пересекаются;
+    // новый ряд — только если в один не помещается или наклон слишком большой
+    const oneRow=(()=>{const arr=bl.map(o=>({o,t:o.t,c:o.c})).sort((p,q)=>p.t-q.t);const G=10;
+      arr.forEach(a=>a.x=a.t-a.c.w/2);
+      for(let i=0;i<arr.length;i++)arr[i].x=Math.max(arr[i].x,0,i?arr[i-1].x+arr[i-1].c.w+G:0);
+      for(let i=arr.length-1;i>=0;i--)arr[i].x=Math.min(arr[i].x,i<arr.length-1?arr[i+1].x-arr[i].c.w-G:maxW-arr[i].c.w);
+      if(arr[0].x<-0.5)return null;let off=0;
+      arr.forEach(a=>{const d=a.t<a.x+8?a.x+8-a.t:a.t>a.x+a.c.w-8?a.t-(a.x+a.c.w-8):0;off=Math.max(off,d);});
+      if(off>70)return null;arr.forEach(a=>{a.o.x=a.x;a.o.r=0;placed.push(a.o);});return{off};})();
+    // ряд за рядом: подпись встаёт в ряд, если не налезает на соседей и НЕ закрывает хвосты ещё не размещённых
+    let rest=oneRow?[]:[...bl].sort((p,q)=>p.t-q.t);
+    // по рядам: подпись может сдвинуться вбок за свою часть (хвост наклонный, не больше 70 px), чтобы встать рядом выше;
+    // хвост не пересекает чужие подписи и хвосты; подпись не загораживает хвосты тех, кто встанет ниже
+    const by0=y+(style==='brace'?6:18);
+    const tailOf=(o,x,r)=>{const b=Math.max(x+4,Math.min(x+o.c.w-16,o.t-6));return[b+6,by0+r*rowH,o.t,o.g.ay+segH];};
+    const segX=(a,b)=>{const[x1,y1,x2,y2]=a,[x3,y3,x4,y4]=b;const d=(x2-x1)*(y4-y3)-(y2-y1)*(x4-x3);if(Math.abs(d)<1e-9)return false;
+      const u=((x3-x1)*(y4-y3)-(y3-y1)*(x4-x3))/d,v=((x3-x1)*(y2-y1)-(y3-y1)*(x2-x1))/d;return u>0.02&&u<0.98&&v>0.02&&v<0.98;};
+    const segRect=(sg,rx,ry,rw,rh2,m)=>{for(let k=1;k<24;k++){const px=sg[0]+(sg[2]-sg[0])*k/24,py=sg[1]+(sg[3]-sg[1])*k/24;if(px>rx-m&&px<rx+rw+m&&py>ry-m&&py<ry+rh2+m)return true;}return false;};
+    for(let r=0;rest.length&&r<12;r++){const left=[];
+      for(const o of rest){const others=rest.filter(q=>q!==o&&!q.done).map(q=>q.t);
+        const W2=o.c.w/2,cands=[];for(let d=0;d<=W2+70;d+=3){cands.push(o.t-W2+d);if(d)cands.push(o.t-W2-d);}
+        let ok=false;
+        for(const x0 of cands){const x=Math.max(0,Math.min(x0,maxW-o.c.w));
+          const tl=tailOf(o,x,r);if(Math.abs(tl[0]-o.t)>70)continue;
+          if(placed.some(q=>q.r===r&&x<q.x+q.c.w+gap&&q.x<x+o.c.w+gap))continue;
+          if(others.some(t=>t>x-16&&t<x+o.c.w+16))continue;
+          {const lo=Math.min(tl[0],o.t)-8,hi=Math.max(tl[0],o.t)+8;if(others.some(t=>t>lo&&t<hi&&Math.abs(t-o.t)>2))continue;} // наклонный хвост не идёт над чужой частью
+          if(placed.some(q=>segRect(tl,q.x,by0+q.r*rowH,q.c.w,q.c.h,6)||segX(tl,tailOf(q,q.x,q.r))))continue;
+          o.x=x;o.r=r;o.done=true;placed.push(o);ok=true;break;}
+        if(!ok)left.push(o);}
+      rest=left;}
+    rest.forEach(o=>{o.r=(placed.length?Math.max(...placed.map(q=>q.r)):-1)+1;o.x=Math.max(0,Math.min(o.t-o.c.w/2,maxW-o.c.w));placed.push(o);});
+    const by=y+(style==='brace'?6:18)+(oneRow?Math.min(30,oneRow.off/5):0);const nR=Math.max(...placed.map(q=>q.r))+1;
+    placed.forEach(o=>{const yy=by+o.r*rowH;const tx=o.t,ty=o.g.ay+segH+(style==='brace'?5:0);
+      if(style==='brace'){if(yy>ty+2)svg+=L(tx,ty,Math.max(o.x+4,Math.min(o.x+o.c.w-4,tx)),yy,C.line,1);
+        svg+=txt(o.c.ls,o.x+o.c.w/2,yy,{anchor:'middle',italic:true,size:FS-1,lh:FS+2,fill:'#5a2a00'});}
+      else{svg+=rect(o.x,yy,o.c.w,o.c.h,pillF,pillS,o.c.h/2,1.1);
+        const b=Math.max(o.x+4,Math.min(o.x+o.c.w-16,tx-6));
+        svg+=wedge(b,yy,b+12,yy,tx,ty,pillF,pillS)+txt(o.c.ls,o.x+o.c.w/2,yy+4,{anchor:'middle'});}});
+    y=by+nR*rowH-6;
+    if(bl.length>7)WARN.push('В одном примере больше 7 подписей — разбейте пример на два (одна зона — одна мысль).');
+  }
+  return{w:o.box?maxW:Math.max(contentW,...bl.map(o=>o.x+o.c.w)),h:y,svg,segs};
+}
+
+/* ============================ СОДЕРЖИМОЕ ФИГУР ============================ */
+function rich(z,w,o={}){
+  const P=8,parts=[];let h=P;
+  const iw=w-2*P-(o.padL||0)-(o.padR||0),x0=P+(o.padL||0);
+  const add=(f,hh)=>{const off=h;parts.push((x,y)=>f(x,y+off));h+=hh+4;};
+  let prev=null;const GAP=7;
+  const mlOf=it=>it.t==='m'?wrap(it.text,iw-14).length>1:it.t==='p'?wrap(it.text,iw,o.bold).length>1:true;
+  for(const it of z){
+    if(it.gap)h+=6;
+    if(STRICT&&prev){const ml=mlOf(it);
+      // отбивка: между частями разного вида и между многострочными пунктами; однострочные пункты — плотно
+      if(it.t!==prev.t||(it.t==='m'&&(ml||prev.ml)))h+=GAP;
+      it.ml=ml;}
+    else if(STRICT)it.ml=mlOf(it);
+    prev=it;
+    if(it.t==='p'){const ls=wrap(it.text,iw,o.bold);add((x,y)=>txt(ls,x+x0+(o.center?iw/2:0),y,{anchor:o.center?'middle':'start',bold:o.bold}),ls.length*LH);}
+    else if(it.t==='rz'){const st=LSTYLE==='auto'?(o.onWhite?'pill':'inset'):LSTYLE;
+      if(st==='inset'){const r=razbor(it.text,iw-16,{style:'pill'});const bw=Math.min(iw,r.w+16),dx=o.center?(iw-bw)/2:0;
+        add((x,y)=>rect(x+x0+dx,y,bw,r.h+12,C.ex,C.exb,4,1)+G(x+x0+dx+8,y+6,r.svg),r.h+12);}
+      else{const r=razbor(it.text,iw,{style:st});const dx=o.center?(iw-r.w)/2:0;add((x,y)=>G(x+x0+Math.max(0,dx),y,r.svg),r.h);}}
+    else if(it.t==='deriv'){const inset=!o.onWhite;const iw2=iw-(inset?16:0);
+      const sw=Math.max(...it.rows.map(r=>tw(r.sign,false,FS+1)))+8;
+      const ex=it.rows.map(r=>wrap(r.ex,iw2*0.62-sw,false,FS+1));const exW=Math.min(iw2*0.62,Math.max(...ex.map(l=>Math.max(...l.map(q=>tw(q,false,FS+1)))))+sw+14);
+      const why=it.rows.map(r=>r.why?wrap(r.why,iw2-exW-18,false,FS-1):[]);
+      const rh=it.rows.map((r,i)=>Math.max(ex[i].length*(FS+5),why[i].length*(FS+2)));const H=rh.reduce((a,b)=>a+b+5,0)+(inset?10:0);
+      add((x,y)=>{const X=x+x0+(inset?8:0);let s2=inset?rect(x+x0,y,iw,H,C.ex,C.exb,4,1):'';let yy=y+(inset?5:0);
+        it.rows.forEach((r,i)=>{s2+=txt([r.sign],X+sw-4,yy,{anchor:'end',size:FS+1,bold:true})+txt(ex[i],X+sw+2,yy,{size:FS+1,lh:FS+5});
+          if(r.why){s2+=L(X+exW-4,yy+2,X+exW-4,yy+rh[i]-2,C.line,1)+txt(why[i],X+exW+4,yy+1,{italic:true,size:FS-1,lh:FS+2,fill:'#5a2a00'});}
+          yy+=rh[i]+5;});return s2;},H);}
+    else if(it.t==='m'){const ls=wrap(it.text,iw-14);add((x,y)=>`<circle cx="${n1(x+x0+4)}" cy="${n1(y+7)}" r="4.2" fill="${C.mark}"/>`+txt(ls,x+x0+14,y),ls.length*LH);}
+    else if(it.t==='bar'){const ls=wrap(it.text,iw-12);const hh=ls.length*LH;add((x,y)=>L(x+x0+2,y+1,x+x0+2,y+hh-1,'#333',2)+txt(ls,x+x0+10,y),hh);}
+    else if(it.t==='f'){const ls=wrap('$'+it.text+'$',iw-20,true,15);const hh=ls.length*19+14;add((x,y)=>rect(x+x0,y,iw,hh,'#fff',C.line,0,2)+txt(ls,x+x0+iw/2,y+7,{anchor:'middle',bold:true,size:15,lh:19}),hh);}
+    else if(it.t==='code'){const cl=it.lines.map(l=>l.replace(/\s+$/,''));const hh=cl.length*15+10;const cw=Math.min(iw,Math.max(...cl.map(l=>tw(l,false,12,true)))+16);
+      add((x,y)=>rect(x+x0,y,cw,hh,C.code,C.codeb,3,1)+txt(cl,x+x0+8,y+5,{mono:true,size:12,lh:15}),hh);}
+    else if(it.t==='img'){const hh=64;add((x,y)=>rect(x+x0,y,iw,hh,'#fff','#999',4,1,'5 3')+txt(['рисунок: '+it.text],x+x0+iw/2,y+hh/2-8,{anchor:'middle',italic:true,fill:'#666'}),hh);}
+    else if(it.t==='brace'){const lw=iw*0.55;let hh=0;const rows=it.items.map(m=>{const ls=wrap(m.text,lw-14);const r={ls,y:hh};hh+=ls.length*LH;return r;});
+      const rl=wrap(it.text,iw-lw-22);hh=Math.max(hh,rl.length*LH);
+      add((x,yy)=>{const bx=x+x0+lw+2;let s=rows.map(r=>`<circle cx="${n1(x+x0+4)}" cy="${n1(yy+r.y+7)}" r="4.2" fill="${C.mark}"/>`+txt(r.ls,x+x0+14,yy+r.y)).join('');
+        const y1=yy+1,y2=yy+hh-1,ym=(y1+y2)/2;
+        s+=`<path d="M${n1(bx)},${n1(y1)}q6,0 6,6V${n1(ym-5)}q0,5 6,5q-6,0 -6,5V${n1(y2-6)}q0,6 -6,6" fill="none" stroke="#333" stroke-width="1.3"/>`;
+        return s+txt(rl,bx+16,ym-rl.length*LH/2);},hh);}
+  }
+  h+=P-4;
+  return{h:Math.max(h,o.minH||0),svg:(x,y,hh)=>{const dy=hh?(hh-h)/2:0;return parts.map(p=>p(x,y+dy)).join('');}};
+}
+// привязанный пример (белый) под фигурой
+function attachedExample(c,w){
+  const z=content({text:c.text,children:c.children});const r=rich(z,w,{center:!z.some(q=>q.t==='m'||q.t==='code'),onWhite:true});const th=LH+2;const h=r.h+th;
+  return{w,h,svg:(x,y,t)=>{let s=rect(x,y,w,h,C.ex,C.exb,6,1.2);
+    if(t)s+=wedge(x+w*0.3-8,y,x+w*0.3+8,y,t.tx,t.ty,C.ex,C.exb);
+    return s+txt([c.counter?'Контрпример ✗':'Пример'],x+w/2,y+5,{anchor:'middle',italic:true,fill:c.counter?'#8B0000':'#555'})+r.svg(x,y+th);}};
+}
+function calloutEl(c,w){
+  const z=content(c);const r=rich(z,w,{center:!z.some(q=>q.t==='m'||q.t==='code')});const h=r.h;
+  return{w,h,svg:(x,y,t)=>{let s=rect(x,y,w,h,C.fill,C.line,c.square?3:10,1.2);
+    if(t){if(t.side==='left'){const by=y+Math.min(h/2,22);s+=wedge(x,by-7,x,by+7,t.tx+1,t.ty,C.fill,C.line);}
+      else{const bx=x+w*0.3;s+=wedge(bx-8,y,bx+8,y,t.tx,t.ty,C.fill,C.line);}}
+    return s+r.svg(x,y);}};
+}
+// всё, что висит под фигурой: выноски снизу и примеры
+function hangers(node,w,below){
+  const out=[];for(const c of node.children){
+    const hw=STRICT?Math.min(w*0.85,360):0;
+    if(c.kind==='example')out.push(attachedExample(c,hw||Math.min(w*0.9,Math.max(260,w*0.6))));
+    else if(c.kind==='rule')out.push(calloutEl({...c,square:true},hw||Math.min(w*0.8,320)));
+    else if(c.kind==='callout'&&below(c))out.push(calloutEl(c,hw||Math.min(w*0.8,320)));}
+  return out;
+}
+function memoEl(node,W,o={}){
+  const pw=o.pw||150,numW=o.num?40:0;const near=o.num&&NUMNEAR;
+  const callouts=node.children.filter(c=>c.kind==='callout');
+  const right=o.cr&&!near?callouts.filter(c=>c.pos==='справа'||(!c.pos&&c.text.length<=70&&!c.children.length)):[];
+  const crW=o.cr&&!near?170:0;
+  const mw=W-pw-10-numW-crW;
+  const pz=hasSeg(node.pointer)?[{t:'rz',text:node.pointer}]:null;
+  const pl=wrapNH(node.pointer,pw-26);const pr=pz?rich(pz,pw-12):null;const pH=pr?pr.h:pl.length*LH+14;
+  const r=rich(content(node),mw);const rcs=right.map(c=>calloutEl(c,crW-14));const h=Math.max(pH,r.h,30,...rcs.map(c=>c.h));
+  const hs=hangers(node,mw,c=>!right.includes(c));
+  const bh=hs.reduce((s,c)=>s+c.h+22,0);
+  return{h:h+bh,cy:h/2,svg:(x,y)=>{
+    let s=pointerPath(x,y+(h-pH)/2,pw,pH)+(pr?pr.svg(x,y+(h-pH)/2):txt(pl,x+(pw-12)/2,y+(h-pH)/2+7,{anchor:'middle'}));
+    s+=`<g class="memo" onclick="this.classList.toggle('open')">`+memoRect(x+pw+10,y,mw,h)+`<g class="memo-t">`+r.svg(x+pw+10,y,h)+`</g></g>`;
+    if(o.num)s+=rect(x+W-numW+10,y+h/2-13,26,26,C.fill)+txt([String(o.num)],x+W-numW+23,y+h/2-8,{anchor:'middle',bold:true});
+    rcs.forEach(c=>{const cx=x+pw+10+mw+14;const yy=y+Math.max(0,(h-c.h)/2);s+=c.svg(cx,yy,{side:'left',tx:x+pw+10+mw,ty:yy+Math.min(c.h/2,22)});});
+    let by=y+h+22;hs.forEach(c=>{const cx=x+pw+10+mw-c.w-10;s+=c.svg(cx,by,{side:'top',tx:cx+c.w*0.3+14,ty:by-21});by+=c.h+22;});
+    return s;}};
+}
+function itemEl(node,w,o={}){
+  const z=content(node);let ctr=false;
+  if(o.auto&&STRICT&&z.length===1&&z[0].t==='p'&&wrap(z[0].text,w-16).length===1)ctr=true; // одна строка — по центру
+  const r=rich(z,w,{center:ctr});
+  const hs=hangers(node,w,()=>true);const bh=hs.reduce((s,c)=>s+c.h+20,0);
+  return{h:r.h+bh,cy:r.h/2,svg:(x,y)=>{let s=`<g class="memo" onclick="this.classList.toggle('open')">`+memoRect(x,y,w,r.h)+`<g class="memo-t">`+r.svg(x,y)+`</g></g>`;
+    let by=y+r.h+20;hs.forEach(c=>{const cx=x+w-c.w-20;s+=c.svg(cx,by,{side:'top',tx:cx+c.w*0.3+12,ty:by-19});by+=c.h+20;});return s;}};
+}
+function boxEl(text,w,o={}){
+  const z=hasSeg(text)?[{t:'rz',text}]:null;const r=z?rich(z,w,{center:true}):null;
+  let sz=FS;if(o.nohyph){while(sz>FS-1&&longWord(text,o.bold,sz)>w-16)sz--;}
+  const ls=o.nohyph?wrapNH(text,w-16,o.bold,sz):wrap(text,w-16,o.bold);const lh=sz+3;const h=Math.max(r?r.h:ls.length*lh+12,o.minH||0);
+  return{w,h,svg:(x,y,hh)=>{const H=hh||h;let s='';
+    if(o.shape==='round')s+=rect(x,y,w,H,o.fill||C.orange,C.line,Math.min(12,H/2));
+    else if(o.shape==='plain')s+=rect(x,y,w,H,C.fill);
+    else s+=memoRect(x,y,w,H);
+    const left=o.auto&&STRICT&&ls.length>1;
+    return s+(r?r.svg(x,y,H):txt(ls,left?x+8:x+w/2,y+(H-ls.length*lh)/2,{anchor:left?'start':'middle',bold:o.bold,size:sz,lh}));}};
+}
+function headerEl(text,maxW){
+  const w0=Math.min(maxW,Math.max(220,tw(pretty(text),true)*0.75+90));
+  const ls=wrapNH(text,w0-70,true);const h=ls.length*LH+24;
+  return{w:w0,h,svg:(x,y)=>headerEllipse(x,y,w0,h)+txt(ls,x+w0/2,y+12,{anchor:'middle',bold:true})};
+}
+
+/* ============================ ВЫБОР СХЕМЫ ============================ */
+function chooseScheme(root,opts){
+  const k=root.children;const cnt=t=>k.filter(c=>c.kind===t).length;
+  if(opts['схема']){const v=opts['схема'].toLowerCase().replace(/ё/g,'е');return SCHEME_EN[v]||v;}
+  {const lk=k.find(c=>c.kind==='link');if(lk&&lk.parts.length>=2&&k.some(c=>c.kind==='memo'&&splitOutside(c.text,' | ').length>=2))return 'шеренга';}
+  if(k.some(c=>['example','rule','code','image','dep'].includes(c.kind))||(cnt('arrow')&&!cnt('pair')&&cnt('header')<2))return 'сцена';
+  const H=cnt('header'),P=cnt('pair'),Z=cnt('memo'),M=cnt('item'),Gr=cnt('group'),S=cnt('link');
+  if((opts['профиль']||'').toLowerCase()==='гном'||(!H&&Z&&!M&&!Gr))return 'гном';
+  if(H>=2)return 'двуглавый змей';
+  if(P)return P>1?'очная ставка многоэтажная':(S?'очная ставка со связкой':'очная ставка');
+  if(Z)return 'батарея';
+  if(Gr){if(k.some(g=>g.kind==='group'&&g.children.some(c=>c.kind==='group')))return 'дерево';if(M)return 'лестница с гребенкой';return 'эполеты';}
+  const items=k.filter(c=>c.kind==='item');const n=items.length;
+  const plain=items.every(i=>!i.children.some(c=>!['callout','blank'].includes(c.kind)));
+  const maxLen=Math.max(0,...items.map(i=>pretty(i.text).length));
+  const W=+(opts.__W||680);
+  const natural=items.reduce((s,i)=>s+Math.min(150,Math.max(64,tw(pretty(i.text))+22)),0)+(n-1)*12;
+  if(items.some(i=>i.num))return S?'лестница со связкой':'лестница';
+  if(S)return (n>=5&&maxLen<=60&&plain)?'гребенка со связкой':'лестница со связкой';
+  if(plain&&maxLen<=32){if(natural<=W-20)return 'линейка';if(n<=12)return 'шахматы';return 'гребенка';}
+  if(plain&&n>=8&&maxLen<=60)return 'гребенка';
+  return 'лестница';
+}
+
+/* ============================ РАСКЛАДКИ СХЕМ ============================ */
+const M0=10;
+let NUM=1;
+function layGnom(root,W,opts){
+  let y=M0,s='';const num=(opts['нумерация']||'да')!=='нет';
+  const cr=root.children.some(c=>c.kind==='memo'&&c.children.some(q=>q.kind==='callout'&&q.pos!=='снизу'));
+  const PW=fitPW(root.children.filter(c=>c.kind==='memo'),150,(W-2*M0)*0.4);
+  for(const c of root.children){if(c.kind!=='memo')continue;const e=memoEl(c,W-2*M0,{num:num?NUM++:0,cr,pw:PW});s+=e.svg(M0,y);y+=e.h+14;}
+  return{h:y,svg:s};
+}
+function headerBlock(hd,W,maxW,centerX,minX){ // заголовок + выноска справа от него
+  const he=headerEl(hd?hd.text:'',maxW);const hcs=hd?hd.children.filter(c=>c.kind==='callout'||c.kind==='rule'):[];
+  let hx=centerX-he.w/2;if(minX!==undefined)hx=Math.max(minX,hx);
+  const hc=hcs.length?calloutEl({...hcs[0],square:hcs[0].square||hcs[0].kind==='rule'},Math.min(230,Math.max(150,W-he.w-60))):null;
+  if(hc&&hx+he.w+hc.w+30>W)hx=Math.max(minX!==undefined?minX:M0,W-M0-he.w-hc.w-24);
+  const hcy=M0+Math.max(he.h/2,hc?Math.min(hc.h/2,24):0);const hy=hcy-he.h/2;
+  let s=he.svg(hx,hy);if(hc)s+=hc.svg(hx+he.w+18,hcy-Math.min(hc.h/2,24),{side:'left',tx:hx+he.w-2,ty:hcy});
+  const bottom=Math.max(hy+he.h,hc?hcy-Math.min(hc.h/2,24)+hc.h:0);
+  return{svg:s,hx,hw:he.w,hcy,bottom,cx:hx+he.w/2,hBottom:hy+he.h};
+}
+function laySpine(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const link=k.find(c=>c.kind==='link');
+  const linkE=link?boxEl(link.parts[0],Math.min(W*0.42,Math.max(80,tw(pretty(link.parts[0]),true)+30)),{shape:'round',bold:true}):null;
+  const sx=M0+(linkE?linkE.w/2:4);let s='',y=M0;
+  const hb=headerBlock(hd,W,W*0.62,W/2+10,sx+40);s+=hb.svg;const hcy=hb.hcy;s+=L(sx,hcy,hb.hx,hcy);
+  y=hb.bottom+14;let top=hcy;
+  if(linkE){s+=L(sx,hcy,sx,y);s+=linkE.svg(sx-linkE.w/2,y);top=y+linkE.h;y+=linkE.h+12;}
+  const rx=sx+16,rw=W-rx-M0;let lastCy=top;
+  const cr=k.some(c=>c.kind==='memo'&&c.children.some(q=>q.kind==='callout'&&q.pos!=='снизу'));
+  for(const c of k){let e;
+    if(c.kind==='memo')e=memoEl(c,rw,{cr,pw:fitPW(k.filter(q=>q.kind==='memo'),Math.min(150,rw*0.3),rw*0.4)});
+    else if(c.kind==='item'||c.kind==='text')e=itemEl(c,rw);
+    else if(c.kind==='group')e=combUnder(c,rw);
+    else continue;
+    s+=e.svg(rx,y);s+=L(sx,y+e.cy,rx,y+e.cy);lastCy=y+e.cy;y+=e.h+12;}
+  s=L(sx,top,sx,lastCy)+s;
+  return{h:y,svg:s};
+}
+function combUnder(g,w){
+  const head=itemEl({text:g.text,children:g.children.filter(c=>['callout','example'].includes(c.kind))},w);
+  const items=g.children.filter(c=>['item','text','marker'].includes(c.kind));
+  const k=items.length<=3?1:(items.length<=8?2:3);const sizes=[...Array(k)].map((_,i)=>Math.floor(items.length/k)+(i<items.length%k?1:0));
+  const cx0=14,colW=(w-cx0-(k-1)*14)/k;let st=0;
+  const cols=sizes.map(sz=>{let yy=0;const els=items.slice(st,st+sz).map(it=>{const e=itemEl({text:it.text,children:it.children},colW-12);const r={e,y:yy};yy+=e.h+8;return r;});st+=sz;return{els,h:yy};});
+  const ch=Math.max(...cols.map(c=>c.h));
+  return{h:head.h+12+ch,cy:head.cy,svg:(x,y)=>{let s=head.svg(x,y);const y0=y+head.h+12;
+    cols.forEach((c,i)=>{const sx=x+cx0+i*(colW+14);let last=y0;
+      c.els.forEach(r=>{s+=r.e.svg(sx+12,y0+r.y);s+=L(sx,y0+r.y+r.e.cy,sx+12,y0+r.y+r.e.cy);last=y0+r.y+r.e.cy;});
+      s=L(sx,y+head.h,sx,last)+s;});return s;}};
+}
+function layRuler(root,W,two){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const items=k.filter(c=>c.kind==='item');
+  const hb=headerBlock(hd,W,W*0.6,W/2);let s=hb.svg,y=hb.hBottom;const HX=hb.cx;
+  const busY=Math.max(y+14,hb.bottom+6);y=busY+14;const n=items.length,g=12;
+  let n1_=two?Math.floor(n/2)+1:n;if(n1_>n)n1_=n;
+  let iw=Math.min(150,Math.max(...items.map(i=>tw(pretty(i.text))+22),64));
+  if(n1_*iw+(n1_-1)*g>W-2*M0)iw=(W-2*M0-(n1_-1)*g)/n1_;
+  const gap=two?Math.max(g,Math.min(40,(W-2*M0-n1_*iw)/(n1_-1||1))):g;
+  const rowW=n1_*iw+(n1_-1)*gap,x0=(W-rowW)/2;
+  const els=items.map(i=>boxEl(i.text,iw));const h1=Math.max(...els.slice(0,n1_).map(e=>e.h));
+  const xs=[];
+  els.slice(0,n1_).forEach((e,i)=>{const x=x0+i*(iw+gap);xs.push(x+iw/2);s+=e.svg(x,y,h1);s+=L(x+iw/2,busY,x+iw/2,y);});
+  let extra=0;items.slice(0,n1_).forEach((it,i)=>{const c=it.children.find(q=>q.kind==='callout');if(!c)return;const ce=calloutEl(c,iw);s+=ce.svg(x0+i*(iw+gap),y+h1+18,{side:'top',tx:xs[i]+iw*0.15,ty:y+h1});extra=Math.max(extra,ce.h+18);});
+  let yEnd=y+h1+extra;
+  if(two&&n>n1_){const y2=y+h1+14;const n2=n-n1_;const h2=Math.max(...els.slice(n1_).map(e=>e.h));
+    for(let j=0;j<n2;j++){const gx=x0+(j+1)*(iw+gap)-gap/2+(n1_-1-n2)*(iw+gap)/2;s+=els[n1_+j].svg(gx-iw/2,y2,h2);s+=L(gx,busY,gx,y2);xs.push(gx);}
+    yEnd=y2+h2;}
+  s=L(Math.min(...xs,HX),busY,Math.max(...xs,HX),busY)+L(HX,hb.hBottom,HX,busY)+s;
+  return{h:yEnd+M0,svg:s};
+}
+function layComb(root,W,withLink){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const items=k.filter(c=>c.kind==='item');const link=k.find(c=>c.kind==='link');
+  const hb=headerBlock(hd,W,W*0.6,W/2);let s=hb.svg,y=hb.hBottom;const HX=hb.cx;const yB=hb.bottom;
+  const nc=items.length<=8?2:3;const sizes=[...Array(nc)].map((_,i)=>Math.floor(items.length/nc)+(i<items.length%nc?1:0));
+  const cg=18,colW=(W-2*M0-(nc-1)*cg)/nc;let topY;
+  if(withLink&&link){const le=boxEl(link.parts[0],W-2*M0,{shape:'round'});const ly=Math.max(y+12,yB+6);s+=L(HX,y,HX,ly);s+=le.svg(M0,ly);topY=ly+le.h;y=topY+12;}
+  else{const busY=Math.max(y+14,yB+6);topY=busY;y=busY+14;const xs=[...Array(nc)].map((_,i)=>M0+i*(colW+cg)+2);s+=L(Math.min(xs[0],HX),busY,Math.max(xs[nc-1],HX),busY)+L(HX,hb.hBottom,HX,busY);}
+  let maxY=y,st=0;
+  sizes.forEach((sz,i)=>{const sx=M0+i*(colW+cg)+2;let yy=y,last=yy;
+    items.slice(st,st+sz).forEach(it=>{const e=itemEl(it,colW-14);s+=e.svg(sx+12,yy);s+=L(sx,yy+e.cy,sx+12,yy+e.cy);last=yy+e.cy;yy+=e.h+8;});
+    st+=sz;s+=L(sx,topY,sx,last);maxY=Math.max(maxY,yy);});
+  return{h:maxY+M0,svg:s};
+}
+function layEpaulets(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const gs=k.filter(c=>c.kind==='group');
+  const hb=headerBlock(hd,W,W*0.6,W/2);let s=hb.svg,y=hb.hBottom;const HX=hb.cx;
+  const busY=Math.max(y+14,hb.bottom+6);y=busY+14;const n=gs.length,cg=14,colW=(W-2*M0-(n-1)*cg)/n;const xs=[];let maxY=y;
+  const eps=gs.map(g=>boxEl(g.text.replace(/:$/,''),colW,{shape:'round',nohyph:true}));const eh=Math.max(...eps.map(e=>e.h));
+  gs.forEach((g,i)=>{const x=M0+i*(colW+cg);xs.push(x+colW/2);s+=eps[i].svg(x,y,eh);s+=L(x+colW/2,busY,x+colW/2,y);
+    const sx=x+10;let yy=y+eh+10,last=yy;
+    g.children.filter(c=>['item','text','marker'].includes(c.kind)).forEach(it=>{const e=itemEl(it,colW-22);s+=e.svg(x+22,yy);s+=L(sx,yy+e.cy,x+22,yy+e.cy);last=yy+e.cy;yy+=e.h+8;});
+    s+=L(sx,y+eh,sx,last);maxY=Math.max(maxY,yy);});
+  s=L(Math.min(xs[0],HX),busY,Math.max(xs[n-1],HX),busY)+L(HX,hb.hBottom,HX,busY)+s;
+  return{h:maxY+M0,svg:s};
+}
+function splitPairKids(p){
+  const l=[{t:hasSeg(p.left)?'rz':'p',text:p.left}],r=[{t:hasSeg(p.right)?'rz':'p',text:p.right}];
+  for(const c of p.children){if(c.kind!=='marker')continue;let m;
+    if(m=c.text.match(/^(?:п|прав[оа]?)\s*:\s*(.*)$/i))r.push({t:'m',text:m[1]});
+    else if(m=c.text.match(/^(?:л|лев[оа]?)\s*:\s*(.*)$/i))l.push({t:'m',text:m[1]});
+    else l.push({t:'m',text:c.text});}
+  return{l:l.filter(z=>z.text),r:r.filter(z=>z.text)};
+}
+function layFaceoff(root,W){
+  const k=root.children;const hds=k.filter(c=>c.kind==='header');const pairs=k.filter(c=>c.kind==='pair');
+  const link=k.find(c=>c.kind==='link');const arrows=k.filter(c=>c.kind==='arrow');
+  const snake=hds.length>=2,multi=pairs.length>1||snake;
+  const gapMid=26,inset=multi?18:0;const half=(W-2*M0-gapMid)/2;
+  const lx=M0+inset,lw=half-inset,rxp=M0+half+gapMid,rw=half-inset;const SL=M0+6,SR=W-M0-6;
+  let s='',y=M0;let spineTop=null;
+  if(snake){const a=headerEl(hds[0].text,half-inset),b=headerEl(hds[1].text,half-inset);const hh=Math.max(a.h,b.h);
+    const ax=lx+(lw-a.w)/2,bx=rxp+(rw-b.w)/2;s+=a.svg(ax,y+(hh-a.h)/2)+b.svg(bx,y+(hh-b.h)/2);
+    spineTop=[{x:SL,y:y+hh/2,from:ax},{x:SR,y:y+hh/2,from:bx+b.w}];y+=hh+14;}
+  else{const hd=hds[0];const lwMax=link?Math.max(...link.parts.map(q=>Math.max(70,tw(pretty(q||''),true)+30))):0;
+    const hw=multi?(link?W-2*(M0+lwMax/2+14):W-2*M0-90):W-2*M0-half*0.4;const ls=wrapNH(hd?hd.text:'',hw-120,true);const hh=ls.length*LH+24;const hx=(W-hw)/2,hcy=y+hh/2;
+    s+=headerEllipse(hx,y,hw,hh)+txt(ls,W/2,y+12,{anchor:'middle',bold:true});
+    const ex=[M0+half*0.3,W-M0-half*0.3];let yb=y+hh+16;
+    if(link){const parts=[link.parts[0]||'',link.parts[1]||''];const les=parts.map(p=>boxEl(p,Math.max(70,tw(pretty(p),true)+30),{shape:'round',bold:true}));
+      const lh=Math.max(...les.map(l=>l.h));
+      les.forEach((le,i)=>{
+        if(multi){const x=i?W-M0-le.w:M0,cx=x+le.w/2;const ex0=i?hx+hw:hx;s+=L(ex0,hcy,cx,hcy)+L(cx,hcy,cx,yb);s+=le.svg(x,yb,lh);}
+        else{const cx=ex[i];s+=L(cx,ellY(cx,hx,y,hw,hh,true),cx,yb);s+=le.svg(cx-le.w/2,yb,lh);s+=L(cx,yb+lh,cx,yb+lh+16);}});
+      if(multi)spineTop=[{x:SL,y:yb+lh},{x:SR,y:yb+lh}];
+      y=yb+lh+16;}
+    else{if(multi){spineTop=[{x:SL,y:hcy,from:hx},{x:SR,y:hcy,from:hx+hw}];y+=hh+14;}
+      else{ex.forEach(cx=>s+=L(cx,ellY(cx,hx,y,hw,hh,true),cx,yb));y=yb;}}
+  }
+  const rows=[];
+  pairs.forEach(p=>{const lc=p.children.some(c=>c.kind==='marker')?splitPairKids(p):null;
+    const LZ=p.lz||(lc?lc.l:[{t:hasSeg(p.left)?'rz':'p',text:p.left}]),RZ=p.rz||(lc?lc.r:[{t:hasSeg(p.right)?'rz':'p',text:p.right}]);
+    const a=rich(LZ,lw,{padR:12}),b=rich(RZ,rw,{padL:12});const h=Math.max(a.h,b.h,30);
+    s+=pointerPath(lx,y,lw,h)+`<g class="memo" onclick="this.classList.toggle('open')"><g class="memo-t">`+a.svg(lx,y,h)+`</g></g>`;
+    s+=counterPath(rxp,y,rw,h)+`<g class="memo" onclick="this.classList.toggle('open')"><g class="memo-t">`+b.svg(rxp,y,h)+`</g></g>`;
+    const ty=y+h/2;[-3.5,0,3.5].forEach(d=>s+=L(lx+lw,ty+d,rxp,ty+d,C.tie,1.6));
+    rows.push(ty);y+=h+12;});
+  if(spineTop&&rows.length){const last=rows[rows.length-1];
+    s+=L(spineTop[0].x,spineTop[0].y,spineTop[0].x,last)+L(spineTop[1].x,spineTop[1].y,spineTop[1].x,last);
+    if(spineTop[0].from!==undefined)s+=L(spineTop[0].x,spineTop[0].y,spineTop[0].from,spineTop[0].y)+L(spineTop[1].x,spineTop[1].y,spineTop[1].from,spineTop[1].y);
+    rows.forEach(r=>{s+=L(spineTop[0].x,r,lx,r)+L(spineTop[1].x,r,rxp+rw,r);});}
+  if(arrows.length){y+=4;
+    const D=14; // глубина острого угла фигуры: нижние блоки — по прямым сторонам колонок
+    if(arrows.length===1||arrows.some(a=>a.dbl)){const a2=arrows.find(a=>a.dbl)||arrows[0];const x1=lx,x2=rxp+rw,bw=x2-x1;const e=boxEl(a2.text,bw,{shape:'plain'});
+      [lx+(lw-D)/2,rxp+D+(rw-D)/2].forEach(cx=>s+=blockArrow(cx,y,36,26,true));s+=e.svg(x1,y+25);y+=25+e.h+8;}
+    else{const es=arrows.slice(0,2).map((a,i)=>{const x1=i?rxp+D:lx,bw=(i?rw:lw)-D;return{x1,bw,e:boxEl(a.text,bw,{shape:'plain'})};});
+      const hmax=Math.max(...es.map(q=>q.e.h));es.forEach(q=>{s+=blockArrow(q.x1+q.bw/2,y,36,26,true)+q.e.svg(q.x1,y+25,hmax);});y+=25+hmax+8;}}
+  return{h:y+M0,svg:s};
+}
+function layTree(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');
+  const kids=n=>n.children.filter(c=>['group','item','text'].includes(c.kind));
+  const leaves=n=>{const c=kids(n);return c.length?c.reduce((s,q)=>s+leaves(q),0):1;};
+  const rootN={text:hd?hd.text:'',children:k.filter(c=>['group','item','text'].includes(c.kind))};
+  const nl=leaves(rootN);const g=10;const fit=(W-2*M0-(nl-1)*g)/nl;
+  const allLeaves=[];(function lv(n){const c=kids(n);if(!c.length)allLeaves.push(n);else c.forEach(lv);})(rootN);
+  const needWord=Math.max(...allLeaves.map(n=>Math.max(...pretty(n.text).split(/\s+/).map(w=>tw(w)))))+22;
+  const needAll=Math.max(...allLeaves.map(n=>tw(pretty(n.text))))+22;
+  const lw=Math.max(66,Math.min(150,fit)); // если самое длинное слово шире (needWord) — перенос по слогам в wrap
+  function meas(n){const c=kids(n);if(!c.length)n._w=lw;else{c.forEach(meas);n._w=c.reduce((s,q)=>s+q._w,0)+(c.length-1)*g;}}
+  meas(rootN);
+  // уровни: одна ширина (по самому длинному тексту, но не шире своего места) и одна высота
+  const byD=[];(function dd(n,d){if(n!==rootN)(byD[d]=byD[d]||[]).push(n);kids(n).forEach(q=>dd(q,d+1));})(rootN,0);
+  byD.forEach(arr=>{if(!arr)return;const want=Math.max(...arr.map(n=>tw(pretty(n.text.replace(/:$/,'')))+24));
+    const w=Math.max(Math.min(lw,want),Math.min(want,...arr.map(n=>n._w)));
+    arr.forEach(n=>n._e=boxEl(n.text.replace(/:$/,''),Math.min(Math.max(w,kids(n).length?Math.min(want,n._w):w),n._w),{shape:kids(n).length?'plain':undefined,nohyph:kids(n).length>0}));
+    const hh=Math.max(...arr.map(n=>n._e.h));arr.forEach(n=>n._h=hh);});
+  let s='';let maxY=0;
+  if(rootN._w>W-2*M0+1)WARN.push('Дерево не помещается по ширине: сократите подписи или разбейте на два дерева.');
+  function draw(n,x,y,isRoot){let h;
+    if(isRoot){const he=headerEl(n.text,W*0.6);s+=he.svg(x+(n._w-he.w)/2,y);h=he.h;}
+    else{h=n._h||n._e.h;s+=n._e.svg(x+(n._w-n._e.w)/2,y,h);}
+    maxY=Math.max(maxY,y+h);const c=kids(n);if(!c.length)return;
+    const busY=y+h+12;let cx=x;const centers=[];const cy=busY+12;
+    c.forEach(q=>{centers.push(cx+q._w/2);draw(q,cx,cy,false);cx+=q._w+g;});
+    s+=L(x+n._w/2,y+h,x+n._w/2,busY);if(centers.length>1)s+=L(centers[0],busY,centers[centers.length-1],busY);
+    centers.forEach(c0=>s+=L(c0,busY,c0,cy));}
+  draw(rootN,(W-rootN._w)/2,M0,true);
+  return{h:maxY+M0,svg:s};
+}
+// Шеренга: сравнение трёх и более объектов по признакам (таблица Паронджанова)
+function layRank(root,W){
+  const k=root.children;const hd=k.find(c=>c.kind==='header');const lk=k.find(c=>c.kind==='link');
+  const cols=lk.parts;const n=cols.length;const rows=k.filter(c=>c.kind==='memo');
+  {const KN={example:'пример:',counter:'контрпример:',image:'рисунок:',callout:'выноска:',item:'пункт',text:'текст',pair:'сравнение «><»',rule:'правило:'};
+   k.forEach(c=>{if(!['header','link','memo','arrow','blank'].includes(c.kind))WARN.push(`Шеренга: ${KN[c.kind]||c.kind} не показывается в таблице — вынесите в отдельную зону через ---`);});
+   rows.forEach(r=>{if(r.children&&r.children.some(q=>q.kind!=='blank'))WARN.push(`Шеренга: вложенное в строку «${r.pointer}» не показывается — вынесите в отдельную зону через ---`);});}
+  const pw=Math.min(W*0.3,Math.max(Math.min(150,Math.max(90,W*0.2)),...k.filter(c=>c.kind==='memo').map(c=>longWord(c.pointer)+30))),gx=8,x0=M0,cx0=x0+pw+12;const cw=(W-M0-cx0-(n-1)*gx)/n;
+  if(cw<90)WARN.push('Шеренга: столбцы слишком узкие — сократите число столбцов или текст в ячейках.');
+  const hb=headerBlock(hd,W,W*0.6,cx0+(W-M0-cx0)/2);let s=hb.svg;
+  const busY=hb.bottom+12;
+  const heads=cols.map(c=>boxEl(c,cw,{shape:'round',bold:true,nohyph:true}));const hh=Math.max(...heads.map(h=>h.h));
+  let y=busY+12;const xs=[];
+  heads.forEach((h,i)=>{const x=cx0+i*(cw+gx);xs.push(x+cw/2);s+=h.svg(x,y,hh);s+=L(x+cw/2,busY,x+cw/2,y);});
+  s=L(Math.min(xs[0],hb.cx),busY,Math.max(xs[n-1],hb.cx),busY)+L(hb.cx,hb.hBottom,hb.cx,busY)+s;
+  y+=hh+10;
+  rows.forEach(r=>{let cells=splitOutside(r.text,' | ').map(q=>q.trim());
+    if(cells.length!==n)WARN.push(`Шеренга: в строке «${r.pointer}» ячеек ${cells.length}, а столбцов ${n}`);
+    while(cells.length<n)cells.push('—');cells=cells.slice(0,n);
+    const rc=cells.map(c=>rich(content({text:c,children:[]}),cw,{center:!hasSeg(c)}));
+    const pl=wrapNH(r.pointer,pw-26);const pH=pl.length*LH+14;const h=Math.max(pH,...rc.map(q=>q.h),30);
+    s+=pointerPath(x0,y+(h-pH)/2,pw,pH)+txt(pl,x0+(pw-12)/2,y+(h-pH)/2+7,{anchor:'middle'});
+    rc.forEach((q,i)=>{const x=cx0+i*(cw+gx);s+=`<g class="memo" onclick="this.classList.toggle('open')">`+memoRect(x,y,cw,h)+`<g class="memo-t">`+q.svg(x,y,h)+`</g></g>`;});
+    y+=h+8;});
+  k.filter(c=>c.kind==='arrow').forEach(a=>{const bw=Math.min(W-2*M0,420);const e=boxEl(a.text,bw,{shape:'plain'});const cx=cx0+(W-M0-cx0)/2;
+    s+=blockArrow(cx,y+2,36,24,true)+e.svg(cx-bw/2,y+25);y+=25+e.h+8;});
+  return{h:y+M0,svg:s};
+}
+// Сцена «Правило и пример» и любые смешанные элементы — сверху вниз, без соединительных линий
+function layScene(root,W){
+  {const a=root.children;for(let i=1;i<a.length;i++){if(a[i].kind==='rule'&&a[i].targets.length&&a[i-1].kind==='example'){
+      let j=i+1;while(j<a.length&&a[j].kind==='rule')j++;if(j<a.length&&a[j].kind==='example')continue;
+      const r=a.splice(i,1)[0];let e=i-1;while(e>0&&a[e-1].kind==='rule')e--;a.splice(e,0,r);}}}
+  const k=root.children;let y=M0,s='';let rules=[];const iw=W-2*M0;const CW=k.some(c=>['memo','item','text','group'].includes(c.kind))?iw:Math.min(iw,480);const cw=(d)=>STRICT?CW:d;
+  const cr=k.some(c=>c.kind==='memo'&&c.children.some(q=>q.kind==='callout'&&q.pos!=='снизу'));
+  const flushRules=()=>{rules.forEach(r=>{const e=calloutEl({text:r.text,children:r.children,square:true},cw(Math.min(iw,420)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;
+    if(r.targets.length)WARN.push('Правило со стрелкой не нашло пример под собой: поставьте строку «пример:» сразу после правила.');});rules=[];};
+  for(let i=0;i<k.length;i++){const c=k[i];
+    if(c.kind!=='rule'&&c.kind!=='example')flushRules();
+    if(c.kind==='header'){const he=headerEl(c.text,W*0.7);s+=he.svg((W-he.w)/2,y);y+=he.h+12;}
+    else if(c.kind==='rule'){if(c.targets.length)rules.push(c);else{const e=calloutEl({text:c.text,children:c.children,square:true},cw(Math.min(iw,420)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;}}
+    else if(c.kind==='example'){const deps=c.children.filter(q=>q.kind==='dep');
+      const plainEx=!hasSeg(c.text)||c.children.some(q=>q.rel);
+      if(plainEx&&!rules.length){const e=attachedExample(c,cw(Math.min(iw,480)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
+      else{if(c.counter){s+=txt(['Контрпример ✗'],W/2,y,{anchor:'middle',italic:true,fill:'#8B0000'});y+=LH+2;}
+        const r=razbor(c.text,iw,{box:true,minBox:STRICT?CW:0,bold:true,size:14,rules,deps,style:LSTYLE==='auto'||LSTYLE==='inset'?'pill':LSTYLE});s+=G(M0,y,r.svg);y+=r.h+14;
+        const code=c.children.filter(q=>q.kind==='code');if(code.length){const rr=rich([{t:'code',lines:code.map(q=>q.text)}],iw);s+=rr.svg(M0,y-10);y+=rr.h;}}
+      rules=[];}
+    else if(c.kind==='memo'){const e=memoEl(c,iw,{cr,pw:fitPW(k.filter(q=>q.kind==='memo'),150,iw*0.4)});s+=e.svg(M0,y);y+=e.h+12;}
+    else if(c.kind==='item'||c.kind==='text'||c.kind==='group'){const e=itemEl(c.kind==='group'?{text:c.text,children:c.children.map(q=>q.kind==='item'?{...q,kind:'marker'}:q)}:c,iw,{auto:true});s+=e.svg(M0,y);y+=e.h+12;}
+    else if(c.kind==='arrow'){const bw=cw(Math.min(iw,340));const e=boxEl(c.text,bw,{shape:'plain',auto:true});const x=(W-bw)/2;s+=e.svg(x,y);y+=e.h;
+      const more=k.slice(i+1).some(q=>q.kind!=='blank');if(more){s+=blockArrow(W/2,y,40,26,false);y+=30;}else y+=12;}
+    else if(c.kind==='callout'){const e=calloutEl(c,cw(Math.min(iw,420)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
+    else if(c.kind==='link'){const e=boxEl(c.parts.join(' · '),Math.min(iw,Math.max(120,tw(pretty(c.parts.join(' · ')),true)+40)),{shape:'round',bold:true});s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
+    else if(c.kind==='code'){const lines=[c.text];while(k[i+1]&&k[i+1].kind==='code')lines.push(k[++i].text);const r=rich([{t:'code',lines}],iw);s+=r.svg(M0,y);y+=r.h+6;}
+    else if(c.kind==='image'){const r=rich([{t:'img',text:c.text}],STRICT?CW+16:iw);s+=r.svg(STRICT?(W-CW-16)/2:M0,y);y+=r.h+6;}
+    else if(c.kind==='pair')WARN.push('Пара «><» внутри сцены не рисуется: вынесите очную ставку в отдельную зону через ---');
+  }
+  flushRules();
+  return{h:y,svg:s};
+}
+
+/* ============================ ПРОВЕРКИ ============================ */
+function lint(root,scheme,opts){
+  const w=[];const cls=parseInt(opts['класс']||'0');const maxWords=!cls?15:cls<=4?8:cls<=7?10:cls<=9?12:15;
+  const sentences=t=>String(t).split(' | ').join('. ').replace(/^/,'').replace(/\$\$[\s\S]*?\$\$/g,'Ф').replace(/\$[^$]*\$/g,'Ф').replace(/`[^`]*`/g,'К').replace(/\[([^\]]*)\]\{[^}]*\}/g,'$1').replace(/\[([^\]]*)\]/g,'$1').split(/(?<=[.!?])\s+/).filter(s=>s.trim());
+  (function walk(n){for(const c of n.children){
+    if(c.kind!=='code'&&c.kind!=='formula'){const texts=[c.text,c.pointer,c.left,c.right].filter(Boolean);
+      texts.forEach(t=>sentences(t).forEach(s=>{const k=s.split(/\s+/).filter(x=>/[\wа-яё]/i.test(x)).length;if(k>maxWords)w.push(`Длинное предложение: ${k} слов при норме до ${maxWords}${cls?' для '+cls+' кл.':''} — «${s.slice(0,50)}…»`);}));}
+    if(c.kind==='memo'&&c.def&&c.text&&!/^(это)(\s|$)/i.test(c.text))w.push(`Определение «${c.pointer}» лучше начинать со слова «Это…» (ГНОМ, правило 2).`);
+    if((c.kind==='memo'||c.kind==='item')&&c.text&&!c.text.includes(' | ')&&sentences(c.text).length>=3&&!c.children.some(q=>q.kind==='marker'))w.push(`В блоке «${(c.pointer||c.text).slice(0,40)}» три и больше мыслей — разбейте на зоны маркерами (ГНОМ, правило 3).`);
+    if(c.kind==='pair'&&!c.lz&&(!c.left||!c.right))w.push('В очной ставке у пары нет второй половины.');
+    walk(c);}})(root);
+  // пункт 8: точка в конце (Мильчин) — предложение в блоке с точкой; заголовок, ячейка, подпись — без
+  {const strip=t=>String(t||'').replace(/\$\$[\s\S]*?\$\$/g,'Ф').replace(/\$[^$]*\$/g,'Ф').replace(/`[^`]*`/g,'К').replace(/\[([^\]]*)\]\{[^}]*\}/g,'$1').trim();
+   const VERB=/^([а-яё]+(ет|ют|ит|ят|ется|ются|ится|ятся|ал|ала|ало|али|ил|ила|ило|или|ел|ела|ело|ели|ен|ена|ено|ены|ан|ана|ано|аны|ть|ться|ешь|ишь)|равен|равна|равно|равны|есть|можно|нельзя|нужно|надо)$/i;
+   const isSent=t=>/^[А-ЯЁ]/.test(t)&&(t.match(/[а-яё]{2,}/gi)||[]).length>=3&&t.toLowerCase().split(/[^а-яё]+/).some(w=>VERB.test(w)); // предложение: есть сказуемое
+   let noDot=0,ex='';
+   (function wk(n){for(const c of n.children){
+     if(c.kind==='header'&&/[^.]\.$/.test(strip(c.text)))w.push(`Заголовок «${strip(c.text).slice(0,30)}»: в заголовке точку не ставят.`);
+     if(c.kind==='memo'&&scheme==='шеренга'&&splitOutside(c.text||'',' | ').some(q=>/[^.]\.$/.test(strip(q))))w.push(`Шеренга, строка «${c.pointer}»: в ячейках таблицы точку не ставят.`);
+     if((c.kind==='memo'&&scheme!=='шеренга'||c.kind==='rule')&&c.text){const t=strip(c.text);if(isSent(t)&&!/[.!?…:]$/.test(t)){noDot++;if(!ex)ex=t.slice(0,40);}}
+     if(c.text&&/\]\{[^}]*\.\}/.test(c.text))w.push('Подпись в {…}: в подписях точку не ставят.');
+     wk(c);}})(root);
+   if(noDot)w.push(`Блоков-предложений без точки в конце: ${noDot} (например, «${ex}…»). Предложение заканчивается точкой; заголовки, ячейки и подписи — без точки.`);}
+  const items=root.children.filter(c=>c.kind==='item').length;
+  if(scheme==='линейка'&&items>7)w.push('В линейке больше 7 элементов — лучше «Шахматы» или «Гребенка».');
+  if(!root.children.some(c=>c.kind==='header')&&!['гном','сцена'].includes(scheme))w.push('Нет строки «тема:» — заголовка схемы.');
+  return w;
+}
+
+/* ============================ СБОРКА ============================ */
+function renderZone(src,W,gopts){
+  const {root,opts}=parse(src);Object.assign(opts,gopts,{схема:opts['схема'],профиль:opts['профиль']});opts.__W=W;
+  if(!root.children.length)return null;
+  const scheme=chooseScheme(root,opts);const sc=scheme.replace(/ё/g,'е');let r;
+  if(sc==='гном')r=layGnom(root,W,opts);
+  else if(['батарея','лестница','лестница со связкой','лестница с гребенкой'].includes(sc))r=laySpine(root,W);
+  else if(sc==='линейка')r=layRuler(root,W,false);
+  else if(sc==='шахматы')r=layRuler(root,W,true);
+  else if(sc==='гребенка')r=layComb(root,W,false);
+  else if(sc==='гребенка со связкой')r=layComb(root,W,true);
+  else if(sc==='эполеты')r=layEpaulets(root,W);
+  else if(sc.startsWith('очная ставка')||sc==='двуглавый змей')r=layFaceoff(root,W);
+  else if(sc==='дерево')r=layTree(root,W);
+  else if(sc==='шеренга')r=layRank(root,W);
+  else r=layScene(root,W);
+  return{scheme,svg:r.svg,h:r.h,warns:lint(root,sc,opts)};
+}
+function render(src,W,ro={}){
+  WARN=[];NUM=1;Object.assign(C,ro.bw?PAL.bw:PAL.color);LSTYLE=ro.labels||'auto';STRICT=!!ro.strict;NUMNEAR=ro.numNear!==undefined?!!ro.numNear:true;
+  const gopts={};src.split('\n').forEach(l=>{const m=normKw(l.trim()).match(OPT);if(m&&m[1]!=='схема')gopts[m[1]]=m[2].trim();});
+  if(gopts['ширина'])W=parseInt(gopts['ширина'])||W;
+  {const cl=parseInt(gopts['класс']||'0');FS=!cl?13:cl<=6?14:cl<=9?13:12;LH=FS+3;} // кегль по классу (СанПиН: младшим крупнее)
+  if(gopts['начать с'])NUM=parseInt(gopts['начать с'])||1;
+  const zones=src.split(/^\s*-{3,}\s*$/m);let y=0,svg='',schemes=[],warns=[];
+  zones.forEach((z,i)=>{const r=renderZone(z,W,gopts);if(!r)return;
+    if(svg)svg+=L(M0,y+4,W-M0,y+4,C.sep,1.5,'6 4'),y+=12;
+    svg+=G(0,y,r.svg);y+=r.h;schemes.push(r.scheme);warns.push(...r.warns);});
+  return{scheme:schemes.join(' + '),svg,h:y+4,warns:[...warns,...WARN]};
+}
+</script>
+<script>"use strict";
+/* Проверочные конспекты: предмет × класс × конструкция.
+   В комментарии «# проверяет:» перечислены конструкции языка, которые пример испытывает. */
+const EXAMPLES=[
+/* ======================= МАТЕМАТИКА 5 ======================= */
+{g:'Математика 5',t:'Как читать многозначное число',s:
+`# проверяет: сцена, тема-вопрос, правило → цель, пример с разбором, зоны ---, опр:
+тема: Как читать многозначное число?
+правило → класс тысяч: Цифры разбивают на классы по три, справа налево.
+пример: [12]{класс миллионов} [345]{класс тысяч} [678]{класс единиц}
+- Читаем: 12 миллионов 345 тысяч 678.
+---
+схема: гном
+класс: 5
+опр: Разряд -> Это место цифры в записи числа.
+опр: Класс -> Это группа из трёх разрядов: единицы, десятки, сотни.`},
+{g:'Математика 5',t:'Компоненты действий',s:
+`# проверяет: батарея, разбор внутри мнемоблоков
+тема: Как называются числа при действиях?
+класс: 5
+Сложение -> [15]{слагаемое} + [7]{слагаемое} = [22]{сумма}
+Вычитание -> [15]{уменьшаемое} − [7]{вычитаемое} = [8]{разность}
+Умножение -> [6]{множитель} · [4]{множитель} = [24]{произведение}
+Деление -> [24]{делимое} : [4]{делитель} = [6]{частное}`},
+{g:'Математика 5',t:'Порядок действий',s:
+`# проверяет: правило без стрелки, пример с подписями-номерами, стрелка вниз, вывод
+тема: В каком порядке выполнять действия?
+правило: Сначала умножение и деление по порядку слева направо, потом сложение и вычитание.
+пример: 20 [−]{3} 12 [:]{1} 4 [·]{2} 2
+стрелка: Считаем: 12 : 4 = 3, затем 3 · 2 = 6
+- 20 − 6 = 14`},
+{g:'Математика 5',t:'Свойства сложения и умножения',s:
+`# проверяет: гном, указатели «свойство:», формулы, черта |
+схема: гном
+класс: 5
+свойство: переместительное -> $a + b = b + a$
+  | От перестановки слагаемых сумма не меняется.
+свойство: сочетательное -> $(a + b) + c = a + (b + c)$
+свойство: распределительное -> $a · (b + c) = a · b + a · c$
+  пример: 7 · 13 + 7 · 7 = 7 · (13 + 7) = 140`},
+{g:'Математика 5',t:'Признаки делимости',s:
+`# проверяет: батарея, признак:, привязанный пример, выноска справа
+тема: Признаки делимости
+класс: 5
+признак: на 2 -> Последняя цифра чётная: 0, 2, 4, 6, 8.
+признак: на 5 -> Последняя цифра 0 или 5.
+признак: на 10 -> Последняя цифра 0.
+признак: на 3 -> Сумма цифр делится на 3.
+  выноска: 372: 3 + 7 + 2 = 12
+признак: на 9 -> Сумма цифр делится на 9.`},
+{g:'Математика 5',t:'Наглядная геометрия: фигуры',s:
+`# проверяет: батарея определений, рисунки
+тема: Простейшие фигуры
+класс: 5
+опр: Отрезок -> Это часть прямой между двумя точками.
+  рисунок: отрезок AB
+опр: Луч -> Это часть прямой, ограниченная с одной стороны.
+  рисунок: луч OA
+опр: Угол -> Это фигура из двух лучей с общим началом.
+  рисунок: угол AOB`},
+{g:'Математика 6',t:'НОД и НОК',s:
+`# проверяет: простая очная ставка (одна пара, без связки)
+тема: Не путать: НОД и НОК
+НОД — наибольший общий делитель. НОД(12, 18) = 6 >< НОК — наименьшее общее кратное. НОК(12, 18) = 36`},
+/* ======================= МАТЕМАТИКА 6 ======================= */
+{g:'Математика 6',t:'Обыкновенная дробь',s:
+`# проверяет: опр + разбор, правило → цель в сцене
+тема: Что такое обыкновенная дробь
+опр: Дробь -> Это запись вида $a/b$, где $b$ — натуральное число.
+правило → знаменатель: Знаменатель показывает, на сколько равных частей разделили целое.
+правило → числитель: Числитель — сколько таких частей взяли.
+пример: [3]{числитель} [/]{дробная черта} [4]{знаменатель}`},
+{g:'Математика 6',t:'Обыкновенная и десятичная дробь',s:
+`# проверяет: очная ставка со связкой, списки >< , стрелка (одна = общая)
+тема: Чем отличаются обыкновенная и десятичная дроби?
+связка: Обыкновенная | Десятичная
+* Записывается через черту: 3/4.
+* Знаменатель любой.
+><
+* Записывается через запятую: 0,75.
+* Знаменатель 10, 100, 1000…
+стрелка: Это одно и то же число: 3/4 = 0,75`},
+{g:'Математика 6',t:'Множества чисел',s:
+`# проверяет: эполеты (два уровня под заголовком)
+тема: Рациональные числа
+Целые
+  - натуральные
+  - ноль
+  - целые отрицательные
+Дробные
+  - положительные
+  - отрицательные`},
+{g:'Математика 6',t:'Пропорция',s:
+`# проверяет: сцена: опр, правило → две цели, стрелка вниз, вывод с формулой в рамке
+тема: Основное свойство пропорции
+опр: Пропорция -> Это равенство двух отношений.
+правило → крайний, средний: Крайние члены стоят по краям, средние — в середине.
+пример: [a]{крайний} : [b]{средний} = [c]{средний} : [d]{крайний}
+стрелка: Произведение крайних равно произведению средних:
+- $$a · d = b · c$$`},
+{g:'Математика 6',t:'Сложение дробей',s:
+`# проверяет: лестница с нумерованными шагами, уточнение у заголовка
+тема: Как сложить дроби с разными знаменателями
+  уточнение: Пример: 1/4 + 1/6
+1. Найти общий знаменатель — НОК знаменателей: НОК(4, 6) = 12.
+2. Найти дополнительные множители: 12 : 4 = 3, 12 : 6 = 2.
+3. Умножить числители на дополнительные множители: 3/12 + 2/12.
+4. Сложить числители: 5/12.`},
+{g:'Математика 6',t:'Проценты',s:
+`# проверяет: гном, рамочные формулы, маркеры
+схема: гном
+класс: 6
+опр: Процент -> Это одна сотая часть числа.
+Как найти процент от числа? ->
+  * Перевести проценты в дробь.
+  * Умножить число на эту дробь.
+  $$15\\% \\text{ от } 80 = 0,15 · 80 = 12$$
+Как найти число по его проценту? ->
+  * Разделить значение на дробь.
+  $$12 : 0,15 = 80$$`},
+{g:'Математика 6',t:'Положительные и отрицательные',s:
+`# проверяет: линейка короткими словами, выноски под элементами, уточнение у заголовка
+тема: Числа на координатной прямой
+  уточнение: Ноль не положительный и не отрицательный
+- Отрицательные
+  выноска: левее нуля
+- Ноль
+  выноска: начало отсчёта
+- Положительные
+  выноска: правее нуля`},
+/* ======================= АЛГЕБРА 7 ======================= */
+{g:'Алгебра 7',t:'Степень',s:
+`# проверяет: разбор с показателем степени, привязанный пример в гноме, скобка }
+схема: гном
+класс: 7
+опр: Степень -> Это произведение одинаковых множителей.
+  пример: [$2$]{основание}[$^5$]{показатель} = 2 · 2 · 2 · 2 · 2 = 32
+Запомните ->
+  * $a^1 = a$
+  * $a^0 = 1$ при $a \\ne 0$
+  } частные случаи`},
+{g:'Алгебра 7',t:'Одночлен и многочлен',s:
+`# проверяет: очная ставка с разбором в указателях
+тема: Чем одночлен отличается от многочлена?
+связка: Одночлен | Многочлен
+[$5$]{коэффициент}[$a^2b$]{буквенная часть} >< [$3x^2$]{член} + [$2x$]{член} − [$7$]{член}
+Произведение чисел и букв >< Сумма одночленов`},
+{g:'Алгебра 7',t:'Формулы сокращённого умножения',s:
+`# проверяет: батарея с рамочными формулами и выносками
+тема: Формулы сокращённого умножения
+класс: 7
+Квадрат суммы ->
+  $$(a + b)^2 = a^2 + 2ab + b^2$$
+Квадрат разности ->
+  $$(a − b)^2 = a^2 − 2ab + b^2$$
+Разность квадратов ->
+  $$a^2 − b^2 = (a − b)(a + b)$$
+  выноска: Читаем справа налево — раскладываем на множители`},
+{g:'Алгебра 7',t:'Линейная функция',s:
+`# проверяет: сцена: разбор формулы + зона с очной ставкой
+тема: Линейная функция
+пример: y = [k]{угловой коэффициент}x + [b]{свободный член}
+- График — прямая. При $b$ = 0 прямая проходит через начало координат.
+---
+тема: Как k влияет на график?
+k > 0 >< k < 0
+Функция возрастает >< Функция убывает
+Прямая идёт вверх слева направо >< Прямая идёт вниз слева направо`},
+{g:'Алгебра 7',t:'Способы решения систем',s:
+`# проверяет: многоэтажная очная ставка, две стрелки
+тема: Как решить систему двух линейных уравнений?
+связка: Подстановка | Сложение
+Выразить одну переменную >< Уравнять коэффициенты
+Подставить во второе уравнение >< Сложить или вычесть уравнения
+Решить уравнение с одной переменной >< Решить уравнение с одной переменной
+стрелка: Удобно, если коэффициент при переменной равен 1
+стрелка: Удобно, если коэффициенты противоположны`},
+{g:'Алгебра 7 (углубл.)',t:'Деление с остатком',s:
+`# проверяет: правило → цель, разбор, связь с вопросом
+тема: Деление с остатком
+правило → остаток: Остаток всегда меньше делителя.
+пример: [17]{делимое} = [5]{делитель} · [3]{неполное частное} + [2]{остаток}
+  связь делитель → остаток: меньше?
+---
+пример: 17 : 5 = 3 (ост. 2)`},
+{g:'Алгебра 7 (углубл.)',t:'Простые и составные',s:
+`# проверяет: эполеты с примерами внутри групп
+тема: Натуральные числа по числу делителей
+Единица:
+  - один делитель
+Простые:
+  - ровно два делителя
+  - 2, 3, 5, 7, 11, 13…
+Составные:
+  - больше двух делителей
+  - 4, 6, 8, 9, 10…`},
+{g:'Алгебра 7 (углубл.)',t:'Алгоритм Евклида',s:
+`# проверяет: лестница со связкой, шаги, привязанный пример
+тема: Алгоритм Евклида
+связка: Чтобы найти НОД(a, b):
+1. Разделить большее число на меньшее с остатком.
+2. Заменить большее число остатком.
+3. Повторять, пока остаток не станет равен нулю.
+4. Последний ненулевой остаток — это НОД.
+  пример: НОД(48, 18): 48 = 18 · 2 + 12. 18 = 12 · 1 + 6. 12 = 6 · 2 + 0. Ответ: 6`},
+{g:'Алгебра 7 (углубл.)',t:'Модуль числа',s:
+`# проверяет: гном, маркеры с формулами, черта, опр с длинным термином
+схема: гном
+опр: Модуль числа -> Это расстояние от нуля до точки на координатной прямой.
+  * $|a| = a$, если $a ≥ 0$
+  * $|a| = −a$, если $a < 0$
+  | Модуль не бывает отрицательным.
+опр: Уравнение с модулем -> Это уравнение, в котором переменная стоит под знаком модуля.
+  пример: $|x| = 3$ → $x = 3$ или $x = −3$`},
+/* ======================= ГЕОМЕТРИЯ 7 ======================= */
+{g:'Геометрия 7',t:'Классификация треугольников',s:
+`# проверяет: эполеты (две классификации рядом)
+тема: Виды треугольников
+По углам:
+  - остроугольный
+  - прямоугольный
+  - тупоугольный
+По сторонам:
+  - разносторонний
+  - равнобедренный
+  - равносторонний`},
+{g:'Геометрия 7',t:'Признаки равенства треугольников',s:
+`# проверяет: батарея, признак:, рисунки
+тема: Признаки равенства треугольников
+признак: 1-й -> По двум сторонам и углу между ними.
+  рисунок: △ABC = △A₁B₁C₁ (стороны и угол)
+признак: 2-й -> По стороне и двум прилежащим к ней углам.
+признак: 3-й -> По трём сторонам.`},
+{g:'Геометрия 7',t:'Как устроена теорема',s:
+`# проверяет: разбор логики утверждения, правило → две цели, зона с очной ставкой
+тема: Из чего состоит теорема?
+правило → условие, заключение: После «если» — условие (что дано), после «то» — заключение (что доказать).
+пример: Если [углы вертикальные]{условие}, то [они равны]{заключение}.
+---
+тема: Теорема и обратная ей
+Если углы вертикальные, то они равны. >< Если углы равны, то они вертикальные.
+Верно >< Неверно!
+стрелка: Обратное утверждение надо доказывать отдельно — оно может быть ложным.`},
+{g:'Геометрия 7',t:'Признаки параллельности',s:
+`# проверяет: лестница со связкой, рисунок в заголовке-выноске
+тема: Признаки параллельности прямых
+связка: Прямые параллельны, если при пересечении секущей:
+- накрест лежащие углы равны;
+- соответственные углы равны;
+- сумма односторонних углов равна 180°.`},
+{g:'Геометрия 7',t:'Сумма углов треугольника',s:
+`# проверяет: теорема:, рамочная формула, следствие:, выноски
+схема: гном
+теорема: о сумме углов треугольника -> Сумма углов треугольника равна 180°.
+  $$∠A + ∠B + ∠C = 180°$$
+следствие: 1 -> В треугольнике не может быть двух тупых углов.
+следствие: 2 -> Сумма острых углов прямоугольного треугольника равна 90°.
+  выноска: Внешний угол равен сумме двух внутренних, не смежных с ним`},
+{g:'Геометрия 7 (углубл.)',t:'Геометрические места точек',s:
+`# проверяет: батарея определений с длинными терминами (без «Что такое»), рисунки
+тема: Геометрические места точек
+опр: Окружность -> Это ГМТ, удалённых от центра на одно и то же расстояние.
+опр: Серединный перпендикуляр к отрезку -> Это ГМТ, равноудалённых от концов отрезка.
+  рисунок: серединный перпендикуляр
+опр: Биссектриса угла -> Это ГМТ внутри угла, равноудалённых от его сторон.`},
+{g:'Геометрия 7',t:'Равнобедренный треугольник',s:
+`# проверяет: гребенка со связкой
+тема: Свойства равнобедренного треугольника
+связка: В равнобедренном треугольнике:
+- углы при основании равны;
+- медиана к основанию — это и высота;
+- медиана к основанию — это и биссектриса;
+- боковые стороны равны;
+- высоты к боковым сторонам равны.`},
+/* ======================= ВЕРОЯТНОСТЬ И СТАТИСТИКА 7 ======================= */
+{g:'ВиС 7',t:'Описательная статистика',s:
+`# проверяет: батарея с разбором формулы и выносками
+тема: Числовые характеристики набора
+класс: 7
+Среднее арифметическое -> [сумма чисел]{Σ} : [их количество]{n}
+  выноска: 2, 3, 7 → 12 : 3 = 4
+Медиана -> Число в середине упорядоченного набора.
+  выноска: 2, 3, 7 → 3
+Размах -> Наибольшее минус наименьшее.
+  выноска: 7 − 2 = 5`},
+{g:'ВиС 7',t:'Среднее или медиана',s:
+`# проверяет: очная ставка, общая стрелка
+тема: Когда среднее, а когда медиана?
+связка: Среднее | Медиана
+Чувствительно к выбросам >< Устойчива к выбросам
+Зарплаты: 30, 30, 30, 300 → 97,5 >< Зарплаты: 30, 30, 30, 300 → 30
+стрелка: Если в данных есть выбросы, медиана честнее описывает «типичное» значение`},
+{g:'ВиС 7',t:'Вероятность события',s:
+`# проверяет: сцена: разбор формулы с дробью, линейка видов событий в зоне
+тема: Вероятность случайного события
+пример: P(A) = [m]{число благоприятных исходов} / [n]{число всех исходов}
+пример: Выпадет чётное на кубике: P = 3/6 = 1/2
+---
+тема: Какие бывают события
+- Достоверное
+  выноска: P = 1
+- Случайное
+  выноска: 0 < P < 1
+- Невозможное
+  выноска: P = 0`},
+{g:'ВиС 7',t:'Дерево случайного опыта',s:
+`# проверяет: ручной выбор схемы (схема: дерево) для дерева исходов
+схема: дерево
+тема: Монету бросают дважды
+Орёл
+  - ОО
+  - ОР
+Решка
+  - РО
+  - РР`},
+{g:'ВиС 7',t:'Графы',s:
+`# проверяет: гном с рисунком, разбор нет; опр с двумя словами
+схема: гном
+опр: Граф -> Это набор вершин и рёбер, соединяющих некоторые пары вершин.
+  рисунок: граф (блок «граф» документа)
+опр: Степень вершины -> Это число рёбер, выходящих из вершины.
+Эйлеров путь -> Проходит по каждому ребру ровно один раз.
+  выноска: Есть, если нечётных вершин 0 или 2`},
+/* ======================= ИНФОРМАТИКА 7 ======================= */
+{g:'Информатика 7',t:'Устройства компьютера',s:
+`# проверяет: эполеты (4 группы)
+тема: Устройства компьютера
+Ввод:
+  - клавиатура
+  - мышь
+  - микрофон
+Вывод:
+  - монитор
+  - принтер
+  - колонки
+Хранение:
+  - SSD
+  - флешка
+Обработка:
+  - процессор`},
+{g:'Информатика 7',t:'Единицы информации',s:
+`# проверяет: ручной выбор схемы (иначе была бы линейка), уточнение у заголовка
+схема: лестница
+тема: Единицы измерения информации
+  уточнение: Каждая следующая больше предыдущей в 1024 раза (кроме байта)
+- 1 байт = 8 бит
+- 1 Кбайт = 1024 байт
+- 1 Мбайт = 1024 Кбайт
+- 1 Гбайт = 1024 Мбайт`},
+{g:'Информатика 7',t:'Путь к файлу',s:
+`# проверяет: разбор строки с символами \\ и ., правило → цель, зона с деревом папок
+тема: Из чего состоит путь к файлу
+правило → расширение: Расширение показывает тип файла.
+пример: [C:]{диск}\\[Учёба]{папка}\\[Информатика]{вложенная папка}\\[отчёт]{имя}.[docx]{расширение}
+---
+тема: C:
+Учёба
+  Информатика
+    - отчёт.docx
+  Физика
+    - опыт.xlsx
+Игры
+  - tetris.exe`},
+{g:'Информатика 7',t:'Адрес в интернете',s:
+`# проверяет: разбор URL без правила
+тема: Из чего состоит адрес веб-страницы
+пример: [https]{протокол}://[school.ru]{доменное имя}/[docs/plan.pdf]{путь к файлу}`},
+{g:'Информатика 7',t:'Растровая и векторная графика',s:
+`# проверяет: многоэтажная очная ставка со связками и общей стрелкой
+тема: Растровая и векторная графика
+связка: Растровая | Векторная
+Из точек (пикселей) >< Из фигур (линий, кривых)
+При увеличении — «лесенка» >< Увеличивается без потерь
+Фото >< Чертежи, логотипы
+стрелка: Формат файла подсказывает тип: .png, .jpg — растр; .svg — вектор`},
+{g:'Информатика 7',t:'Информационный объём',s:
+`# проверяет: разбор формулы в сцене, привязанный к правилу пример, стрелка
+тема: Информационный объём текста
+правило → i: Каждый символ кодируется одинаковым числом бит.
+пример: [I]{объём} = [K]{количество символов} · [i]{бит на символ}
+стрелка: 100 символов по 8 бит:
+- I = 100 · 8 = 800 бит = 100 байт`},
+{g:'Информатика 7 (углубл.)',t:'Алгоритмические конструкции',s:
+`# проверяет: линейка с выносками-примерами
+тема: Алгоритмические конструкции
+- Следование
+  выноска: шаг за шагом
+- Ветвление
+  выноска: если … то … иначе
+- Повторение
+  выноска: нц … кц`},
+{g:'Информатика 7 (углубл.)',t:'Команды Робота',s:
+`# проверяет: батарея с кодом в мнемоблоках
+тема: Робот: команды и условия
+Команды движения -> вверх, вниз, влево, вправо
+Действие -> закрасить
+Условия ->
+  * сверху свободно, снизу свободно…
+  * слева стена, справа стена…
+  * клетка закрашена
+Цикл ->
+  \`нц пока справа свободно
+  \`  вправо; закрасить
+  \`кц`},
+{g:'Информатика 7 (углубл.)',t:'Цикл «пока» в КуМире',s:
+`# проверяет: разбор кода с ключевыми словами, правило → цель, связь
+тема: Цикл «пока»
+правило → условие: Условие проверяется ПЕРЕД каждым повторением.
+пример: [нц]{начало цикла} [пока]{ключевое слово} [справа свободно]{условие} [вправо]{тело цикла} [кц]{конец цикла}
+---
+стрелка: Если условие ложно сразу, тело не выполнится ни разу
+- Это цикл с предусловием.`},
+{g:'Информатика 7 (углубл.)',t:'Черепаха',s:
+`# проверяет: гном, команда:, код в мнемоблоке, выноска снизу
+схема: гном
+команда: вперёд(n) -> Черепаха идёт на n шагов, хвост рисует.
+команда: вправо(угол) -> Поворот по часовой стрелке.
+Как нарисовать квадрат? ->
+  \`нц 4 раз
+  \`  вперёд(100)
+  \`  вправо(90)
+  \`кц
+  выноска снизу: Сумма поворотов — 360°`},
+/* ======================= ПРОГРАММИРОВАНИЕ (Python) ======================= */
+{g:'Программирование',t:'Ввод и вывод',s:
+`# проверяет: разбор строки кода, правило → цель, связь
+тема: Как ввести число?
+правило → int: input() всегда возвращает строку — переводим в число.
+пример: [n]{переменная} = [int]{перевод в целое}([input]{ввод с клавиатуры}())
+  связь input → int: строка
+---
+пример: print("Ответ:", n * 2)`},
+{g:'Программирование',t:'Ветвление if',s:
+`# проверяет: разбор, правило → цель-знак, код в примере
+тема: Ветвление в Python
+правило → двоеточие: После условия обязательно двоеточие!
+правило → отступ: Тело ветки — с отступом 4 пробела.
+пример: [if]{ключевое слово} [x > 0]{условие}[:]{двоеточие} [print("плюс")]{отступ}`},
+{g:'Программирование',t:'Присваивание a = a + 1',s:
+`# проверяет: связь между одинаковыми словами (ищется по подписи)
+тема: Что значит a = a + 1?
+правило → новое: Сначала вычисляется правая часть, потом результат кладётся в переменную.
+пример: [a]{новое} = [a]{старое} + 1
+  связь старое → новое: +1`},
+{g:'Программирование',t:'while и for',s:
+`# проверяет: многоэтажная очная ставка, код в связках нет
+тема: Чем отличается while от for?
+связка: while | for
+Повторяет, пока условие истинно >< Повторяет для каждого элемента
+Число шагов заранее неизвестно >< Число шагов известно заранее
+Можно зациклиться навсегда >< Сам заканчивается
+стрелка: Ввод до нуля
+стрелка: for i in range(10)`},
+{g:'Программирование',t:'Типы данных',s:
+`# проверяет: батарея, код-строки в мнемоблоках
+тема: Простые типы Python
+int -> Целое число
+  \`x = 5
+float -> Дробное число
+  \`g = 9.8
+  выноска: Сравнивать float через == опасно
+str -> Строка
+  \`name = "Маша"
+bool -> Логическое значение
+  \`ok = True`},
+{g:'Программирование',t:'Ошибки',s:
+`# проверяет: гном с кодом и пояснениями
+схема: гном
+SyntaxError -> Нарушены правила записи.
+  \`print("Привет"
+  | Забыта закрывающая скобка.
+NameError -> Имя не определено.
+  \`print(x)   # x не создан
+TypeError -> Действие с неподходящим типом.
+  \`"5" + 3`},
+{g:'Программирование',t:'Ключевые слова Python',s:
+`# проверяет: гребенка (больше 12 коротких пунктов)
+тема: Ключевые слова Python
+- if
+- elif
+- else
+- while
+- for
+- in
+- def
+- return
+- import
+- and
+- or
+- not
+- True
+- False`},
+/* ======================= ФИЗИКА 7 ======================= */
+{g:'Физика 7',t:'Физические величины',s:
+`# проверяет: батарея с разбором формул и единиц
+тема: Основные величины
+класс: 7
+Скорость -> [$v$]{м/с} = [$s$]{путь, м} / [$t$]{время, с}
+Плотность -> [$ρ$]{кг/м³} = [$m$]{масса, кг} / [$V$]{объём, м³}
+Сила тяжести -> [$F$]{Н} = [$m$]{масса, кг} · [$g$]{9,8 Н/кг}`},
+{g:'Физика 7',t:'Приборы',s:
+`# проверяет: шахматы (не помещается в один ряд)
+тема: Какой прибор что измеряет
+- Линейка — длину
+- Весы — массу
+- Мензурка — объём
+- Динамометр — силу
+- Секундомер — время
+- Термометр — температуру
+- Барометр — давление`},
+{g:'Физика 7',t:'Механическое движение',s:
+`# проверяет: лестница с гребенкой
+тема: Механическое движение
+- Это изменение положения тела относительно других тел с течением времени.
+- Движение всегда описывают относительно тела отсчёта.
+- По форме траектории и скорости движение бывает:
+  - прямолинейным
+  - криволинейным
+  - равномерным
+  - неравномерным`},
+{g:'Физика 7',t:'Масса и вес',s:
+`# проверяет: очная ставка со связкой
+тема: Чем масса отличается от веса?
+связка: Масса | Вес
+Мера инертности тела >< Сила, с которой тело давит на опору
+Измеряется в кг >< Измеряется в Н
+Одинакова на Земле и на Луне >< На Луне в 6 раз меньше`},
+{g:'Физика 7',t:'Физические явления',s:
+`# проверяет: эполеты 5 групп (теснота по ширине)
+тема: Физические явления
+Механические:
+  - падение
+Тепловые:
+  - таяние льда
+Электрические:
+  - молния
+Световые:
+  - радуга
+Звуковые:
+  - эхо`},
+{g:'Физика 7',t:'Агрегатные состояния',s:
+`# проверяет: сравнение ТРЁХ объектов — эполеты как таблица
+тема: Агрегатные состояния вещества
+Твёрдое:
+  - форму сохраняет
+  - объём сохраняет
+  - частицы колеблются на месте
+Жидкое:
+  - форму не сохраняет
+  - объём сохраняет
+  - частицы перескакивают
+Газ:
+  - форму не сохраняет
+  - объём не сохраняет
+  - частицы летают свободно`},
+{g:'Физика 7',t:'Перевод единиц',s:
+`# проверяет: сцена: правило, пример, стрелка, вывод
+тема: Как перевести км/ч в м/с?
+правило → 1000, 3600: 1 км = 1000 м, 1 ч = 3600 с.
+пример: 72 км/ч = 72 · [1000]{м в км} / [3600]{с в часе} м/с
+стрелка: Короче: делим на 3,6
+- 72 : 3,6 = 20 м/с`},
+{g:'Физика 7 (углубл.)',t:'Архимедова сила',s:
+`# проверяет: правило → цель (типичная ошибка), разбор формулы с индексами
+тема: Архимедова сила
+правило → ρ: Берут плотность ЖИДКОСТИ, а не тела!
+пример: [$F_A$]{сила Архимеда} = [$ρ_ж$]{плотность жидкости} · [$g$]{9,8 Н/кг} · [$V_т$]{объём погружённой части}
+---
+тема: Условия плавания тел
+$F_A > F_т$ -> Тело всплывает.
+$F_A = F_т$ -> Тело плавает внутри жидкости.
+$F_A < F_т$ -> Тело тонет.`},
+{g:'Физика 7 (углубл.)',t:'Простые механизмы',s:
+`# проверяет: дерево (разновидности)
+тема: Простые механизмы
+Рычаг
+  - блок
+  - ворот
+Наклонная плоскость
+  - клин
+  - винт`},
+{g:'Физика 7 (углубл.)',t:'Золотое правило механики',s:
+`# проверяет: сцена: правило, стрелка, вывод; черта
+тема: «Золотое правило» механики
+правило: Ни один механизм не даёт выигрыша в работе.
+стрелка: Во сколько раз выигрываем в силе —
+- во столько же раз проигрываем в расстоянии.
+  | Рычаг, блок, наклонная плоскость — все подчиняются правилу.`},
+{g:'Физика 7 (углубл.)',t:'Закон Паскаля',s:
+`# проверяет: двуглавый змей
+тема: Твёрдое тело
+тема: Жидкость и газ
+Передаёт давление по направлению силы >< Передаёт давление во все стороны одинаково
+Форма сохраняется >< Принимает форму сосуда
+стрелка: Закон Паскаля — о жидкостях и газах`},
+/* ======================= КНИГА (регресс) ======================= */
+{g:'Книга (регресс)',t:'Прямая речь (рис. 6)',s:
+`тема: Как записать прямую речь?
+правило → Запятая, Тире: Когда прямая речь стоит ПЕРЕД словами автора, после неё ставят запятую и тире.
+пример: [«Пойдём в кино»]{Прямая речь}[,]{Запятая} [—]{Тире} [сказал Вася.]{Слова автора}
+---
+правило → Двоеточие: Когда прямая речь стоит ПОСЛЕ слов автора, перед ней ставят двоеточие.
+пример: [Вася сказал]{Слова автора}[:]{Двоеточие} [«Пойдём в кино».]{Прямая речь}
+---
+опр: Прямая речь -> Это точно записанная чужая речь.`},
+{g:'Книга (регресс)',t:'Причастный оборот (рис. 10)',s:
+`опр: Причастный оборот -> Это причастие с зависимыми словами.
+правило → Причастие: Причастный оборот
+пример: [Опавшие]{Причастие} [с берёз]{Зависимые слова} [листья]{Не входит в оборот} [усыпали тропинку]
+  связь листья → Опавшие: Какие?
+стрелка: Почему «листья» не входит? Потому что есть правило:
+- В причастный оборот не входит определяемое им существительное.`},
+{g:'Книга (регресс)',t:'Батарея с выносками (рис. 67)',s:
+`тема: Действия познающего человека
+Обнаружение сигнала -> Это выделение действующего раздражителя из хаоса окружающего фона.
+  выноска: — Тут что-то есть! Но пока не разберу что.
+Различение сигнала -> Это мысленное отделение одного сигнала от сходного с ним другого.
+  выноска: — Это что-то более тёмное и рыхлое.
+Опознание сигнала -> Это мысленное отнесение объекта к какой-либо группе объектов.
+  | Это мысленное раскладывание по полочкам.
+  выноска: — Это какой-то порок древесины!`},
+{g:'Книга (регресс)',t:'Лестница с гребенкой (рис. 56)',s:
+`тема: Полномочия органов самоуправления
+  уточнение: В области охраны:
+    * общественного порядка
+    * прав и свобод граждан
+- Органы самоуправления обязаны соблюдать Конституцию и законы России
+- Они должны обеспечивать охрану общественного порядка
+- В их ведении находятся:
+  - Охрана порядка с помощью органов внутренних дел
+  - Рассмотрение административных правонарушений
+  - Попечительство несовершеннолетних
+  - Контроль в местах лишения свободы`},
+{g:'Книга (регресс)',t:'Шахматы (рис. 46)',s:
+`тема: Семь чудес света
+- Пирамиды в Египте
+- Статуя Зевса в Олимпии
+- Маяк в Александрии
+- Мавзолей в Галикарнасе
+- Висячие сады Семирамиды
+- Храм Артемиды в Эфесе
+- Колосс Родосский`},
+{g:'Книга (регресс)',t:'Гребенка со связкой (рис. 52)',s:
+`тема: Когда Дон Кихоту хочется чихнуть?
+связка: Тогда, когда он ощущает внутреннее беспокойство, в основе которого лежит:
+- Предстоящее сражение с ветряными мельницами
+- Внезапное падение в пропасть
+- Весенний авитаминоз
+- Осеннее одиночество
+- Нападение страшных разбойников
+- Прямое попадание атомной бомбы`},
+{g:'Книга (регресс)',t:'Многоэтажная очная ставка (рис. 71)',s:
+`тема: Чем отличается мир идей от реального мира? (по Платону)
+связка: Мир идей | Реальный мир
+Вечный >< Временный
+Бессмертный >< Смертный
+Постигаемый разумом >< Воспринимаемый чувствами
+стрелка: Это мир идей Платона
+стрелка: Это реальный мир, в котором мы живём`},
+{g:'Книга (регресс)',t:'Двуглавый змей (рис. 74)',s:
+`тема: Три вопроса, которые задал Кант
+тема: Три типа отношений «человек — мир»
+Что я могу знать? >< Познавательное отношение
+Что я должен делать? >< Практическое отношение
+На что я могу надеяться? >< Ценностное отношение
+стрелка: Три вопроса Канта отражают три типа отношений`},
+];
+
+"use strict";
+/* Проверка 9–11 классов (база и углубл.), УМК Полякова–Еремина, УМК Петерсон 5–9 */
+EXAMPLES.push(
+/* ======================= ПЕТЕРСОН 5–9 ======================= */
+{g:'Петерсон 5–9',t:'Эталон для самопроверки',s:
+`# проверяет: шеренга в два столбца «Эталон | Пример» — эталон для самопроверки по Петерсон
+тема: Как найти неизвестный делитель
+класс: 5
+связка: Эталон | Пример
+Дано -> $a : x = b$ | $24 : x = 8$
+Шаг 1 -> $x = a : b$ | $x = 24 : 8$
+Ответ -> — | $x = 3$
+стрелка: Сверяй решение с эталоном по шагам: на каком шаге ошибка?`},
+{g:'Петерсон 5–9',t:'Подробный образец и эталон',s:
+`# проверяет: виды опорных сигналов по Петерсон — линейка с выносками
+тема: Чем проверять себя
+- Образец
+  выноска: только ответ
+- Подробный образец
+  выноска: все шаги на числах
+- Эталон
+  выноска: шаги в общем виде`},
+{g:'Петерсон 5–9',t:'Алгоритм сравнения рациональных чисел',s:
+`# проверяет: лестница со связкой + привязанный пример + контрпример
+тема: Сравнение рациональных чисел
+класс: 6
+связка: Чтобы сравнить два числа:
+1. Если знаки разные — больше положительное.
+2. Если оба положительные — больше то, у которого больше модуль.
+3. Если оба отрицательные — больше то, у которого меньше модуль.
+  пример: −3 > −7, так как |−3| < |−7|
+  контрпример: −3 < −7 — сравнили модули, забыв про знак`},
+{g:'Петерсон 5–9',t:'Свойства степени (буквенная запись)',s:
+`# проверяет: гном со свойствами в буквенном виде и примерами
+схема: гном
+класс: 7
+свойство: 1 -> $a^m · a^n = a^{m+n}$
+  пример: $2^3 · 2^4 = 2^7$
+свойство: 2 -> $a^m : a^n = a^{m−n}$
+свойство: 3 -> $(a^m)^n = a^{mn}$
+свойство: 4 -> $(ab)^n = a^n b^n$`},
+{g:'Петерсон 5–9',t:'Три задачи на проценты',s:
+`# проверяет: шеренга в три столбца с формулами
+тема: Задачи на проценты
+класс: 6
+связка: % от числа | Число по % | Сколько %
+Что дано -> число и % | часть и % | два числа
+Действие -> умножить на дробь | разделить на дробь | разделить и умножить на 100
+Пример -> 20% от 50 = 10 | 10 — это 20%, всё = 50 | 10 от 50 — 20%`},
+{g:'Петерсон 5–9',t:'Работа над ошибкой',s:
+`# проверяет: очная ставка «ошибка — верно», рефлексия
+тема: Где ошибка?
+связка: Ошибка | Верно
+$(a + b)^2 = a^2 + b^2$ >< $(a + b)^2 = a^2 + 2ab + b^2$
+стрелка: Причина: забыли удвоенное произведение. Правило — формула квадрата суммы.`},
+/* ======================= 9 КЛАСС ======================= */
+{g:'Алгебра 9',t:'Квадратичная функция',s:
+`# проверяет: разбор с подписями к коэффициентам, рамочная формула вершины
+тема: Квадратичная функция
+класс: 9
+пример: y = [$a$]{куда ветви}$x^2$ + [$b$]{сдвиг вершины}$x$ + [$c$]{пересечение с Oy}
+правило → a: $a > 0$ — ветви вверх, $a < 0$ — вниз.
+пример: y = [$−2$]{a < 0: ветви вниз}$x^2$ + 4x − 1
+---
+формула: вершины ->
+  $$x_0 = −b / 2a$$`},
+{g:'Алгебра 9',t:'Арифметическая и геометрическая прогрессии',s:
+`# проверяет: шеренга в два столбца по признакам
+тема: Прогрессии
+класс: 9
+связка: Арифметическая | Геометрическая
+Как получаем следующий -> прибавляем $d$ | умножаем на $q$
+n-й член -> $a_n = a_1 + (n − 1)d$ | $b_n = b_1 · q^{n−1}$
+Сумма n членов -> $S_n = (a_1 + a_n)n / 2$ | $S_n = b_1(q^n − 1)/(q − 1)$
+Пример -> 2, 5, 8, 11… | 2, 6, 18, 54…`},
+{g:'Алгебра 9',t:'Метод интервалов',s:
+`# проверяет: лестница шагов с рисунком (блок «интервалы»)
+тема: Метод интервалов
+1. Перенести всё в левую часть: $f(x) > 0$.
+2. Найти нули и точки, где $f(x)$ не определена.
+3. Отметить точки на прямой и расставить знаки.
+  рисунок: блок «интервалы» документа
+4. Выбрать промежутки нужного знака: например, $x ∈ (−∞; −2) ∪ [1; 3]$.`},
+{g:'Геометрия 9',t:'Теорема косинусов',s:
+`# проверяет: разбор длинной формулы, правило → цель
+тема: Теорема косинусов
+правило → угол между ними: Угол — между сторонами b и c, напротив стороны a.
+пример: [$a^2$]{квадрат стороны} = [$b^2 + c^2$]{сумма квадратов двух других} − [$2bc · \\cos A$]{угол между ними}
+стрелка: При A = 90° получаем теорему Пифагора`},
+{g:'Геометрия 9',t:'Как решать треугольник',s:
+`# проверяет: батарея «что дано → чем решаем»
+тема: Решение треугольников
+Три стороны -> Теорема косинусов
+Две стороны и угол между ними -> Теорема косинусов
+Сторона и два угла -> Сумма углов, затем теорема синусов
+Две стороны и угол против одной -> Теорема синусов
+  выноска: Может быть 0, 1 или 2 решения!`},
+{g:'ВиС 9',t:'Правило умножения',s:
+`# проверяет: сцена, правило, пример с разбором, стрелка, вывод
+тема: Комбинаторное правило умножения
+правило: Если первый выбор — $m$ способами, второй — $n$ способами, то пара — $m · n$ способами.
+пример: Код из [2]{буквы: 33 · 33} букв и [3]{цифры: 10 · 10 · 10} цифр
+стрелка: Перемножаем:
+- $33^2 · 10^3 = 1\\,089\\,000$ кодов`},
+{g:'Физика 9',t:'Законы Ньютона',s:
+`# проверяет: шеренга в три столбца (узкие ячейки)
+тема: Законы Ньютона
+класс: 9
+связка: I закон | II закон | III закон
+Суть -> Без сил — покой или равномерное движение | Сила даёт ускорение | Действие равно противодействию
+Формула -> $\\vec F = 0 → \\vec v = const$ | $\\vec F = m\\vec a$ | $\\vec F_{12} = −\\vec F_{21}$
+Пример -> Пассажир в тормозящем автобусе | Тележка с грузом разгоняется медленнее | Отдача ружья`},
+{g:'Физика 9',t:'Равноускоренное движение',s:
+`# проверяет: разбор формулы с дробью и индексами
+тема: Координата при равноускоренном движении
+пример: x = [$x_0$]{начальная координата} + [$v_0 t$]{путь при постоянной скорости} + [$at^2/2$]{добавка за счёт ускорения}
+правило: Знаки $v_0$ и $a$ берём по направлению оси.`},
+{g:'Физика 9',t:'Закон сохранения импульса',s:
+`# проверяет: опр с формулой, правило → цель
+тема: Импульс
+опр: Импульс -> Это произведение массы на скорость: $\\vec p = m\\vec v$.
+правило → система: Закон работает только для замкнутой системы.
+пример: [$m_1 \\vec v_1 + m_2 \\vec v_2$]{система до} = [$m_1 \\vec v_1' + m_2 \\vec v_2'$]{система после}`},
+{g:'Информатика 9',t:'Адреса в электронных таблицах',s:
+`# проверяет: знак \\$ внутри разбора (экранирование), шеренга
+тема: Ссылки в электронных таблицах
+пример: [\\$]{закрепляет столбец}A[\\$]{закрепляет строку}1
+---
+тема: Что меняется при копировании
+связка: A1 | \\$A1 | A\\$1 | \\$A\\$1
+Столбец -> меняется | нет | меняется | нет
+Строка -> меняется | меняется | нет | нет`},
+{g:'Информатика 9',t:'Списки в Python',s:
+`# проверяет: вложенные скобки и код внутри разбора
+тема: Обращение к элементу списка
+правило → индекс: Нумерация с нуля!
+пример: [\`a\`]{список}[\`[2]\`]{индекс} — третий элемент
+пример: s[[1]{start}:[5]{stop}:[2]{step}]
+  связь start → stop: не включая`},
+/* ======================= 10–11 АЛГЕБРА ======================= */
+{g:'Алгебра 10–11',t:'Логарифм',s:
+`# проверяет: опр, разбор записи логарифма, привязанный пример
+тема: Логарифм
+класс: 10
+опр: Логарифм -> Это показатель степени, в которую надо возвести основание, чтобы получить число.
+  пример: $\\log_2 8 = 3$, так как $2^3 = 8$
+---
+пример: log[$_a$]{основание: a > 0, a ≠ 1} [$b$]{число: b > 0} = [$c$]{показатель}
+стрелка: Значит:
+- $a^c = b$`},
+{g:'Алгебра 10–11',t:'Знаки тригонометрических функций',s:
+`# проверяет: шеренга в четыре столбца
+тема: Знаки по четвертям
+связка: I | II | III | IV
+sin -> + | + | − | −
+cos -> + | − | − | +
+tg -> + | − | + | −
+стрелка: Мнемоника для sin: «верх — плюс»`},
+{g:'Алгебра 10–11',t:'Таблица производных',s:
+`# проверяет: батарея формул (указатели-формулы)
+тема: Производные основных функций
+класс: 10
+$C$ -> $0$
+$x^n$ -> $nx^{n−1}$
+$\\sin x$ -> $\\cos x$
+$\\cos x$ -> $−\\sin x$
+$e^x$ -> $e^x$
+$\\ln x$ -> $1/x$`},
+{g:'Алгебра 10–11',t:'Исследование функции',s:
+`# проверяет: лестница с номерами, уточнение у заголовка
+тема: Схема исследования функции
+  уточнение: Не пропускать шаг 1!
+1. Найти область определения.
+2. Найти производную $f'(x)$.
+3. Найти критические точки: $f'(x) = 0$ или не существует.
+4. Определить знаки $f'(x)$ на промежутках.
+5. Сделать вывод о возрастании, убывании и экстремумах.`},
+{g:'Алгебра 10–11',t:'Производная и первообразная',s:
+`# проверяет: многоэтажная очная ставка с формулами
+тема: Производная и первообразная — взаимно обратны
+связка: Производная | Первообразная
+$F(x) → F'(x)$ >< $f(x) → F(x) + C$
+$(x^3)' = 3x^2$ >< $\\int 3x^2 dx = x^3 + C$
+Одна функция >< Семейство функций (+ C)`},
+{g:'Алгебра 10–11 (углубл.)',t:'Комплексные числа',s:
+`# проверяет: разбор алгебраической формы, правило → цель
+тема: Алгебраическая форма комплексного числа
+правило → мнимая единица: По определению $i^2 = −1$.
+пример: z = [$a$]{действительная часть} + [$b$]{мнимая часть}[$i$]{мнимая единица}
+---
+опр: Модуль -> Это расстояние до начала координат: $|z| = \\sqrt{a^2 + b^2}$.`},
+{g:'Алгебра 10–11 (углубл.)',t:'Метод математической индукции',s:
+`# проверяет: лестница со связкой, шаги, стрелка-вывод в отдельной зоне
+тема: Метод математической индукции
+связка: Чтобы доказать P(n) для всех натуральных n:
+1. База: проверить P(1).
+2. Предположение: пусть P(k) верно.
+3. Переход: доказать P(k + 1), опираясь на P(k).
+---
+стрелка: Тогда P(n) верно при всех n — как падают костяшки домино
+- Не забывать базу: без неё «доказывается» и ложное!`},
+{g:'Алгебра 10–11 (углубл.)',t:'Обоснование переходов (олимпиадный приём)',s:
+`# проверяет: разбор знаков равенства/неравенства с причинами — подписи над переходами
+тема: Докажите: $a^2 + b^2 ≥ 2ab$
+пример: $a^2 + b^2 − 2ab$ [=]{формула квадрата разности} $(a − b)^2$ [≥]{квадрат неотрицателен} 0
+стрелка: Значит, $a^2 + b^2 ≥ 2ab$, равенство при $a = b$.`},
+{g:'Алгебра 10–11 (углубл.)',t:'Разбор случаев',s:
+`# проверяет: дерево случаев (ручной выбор схемы)
+схема: дерево
+тема: |x − 1| + |x + 2| = 5
+x < −2
+  - −2x − 1 = 5
+  - x = −3 ✓
+−2 ≤ x < 1
+  - 3 = 5
+  - нет решений
+x ≥ 1
+  - 2x + 1 = 5
+  - x = 2 ✓`},
+{g:'Алгебра 10–11 (углубл.)',t:'Неравенство о средних',s:
+`# проверяет: разбор + контрпример (модель Фрейера)
+тема: Неравенство Коши для двух чисел
+пример: [$(a + b)/2$]{среднее арифметическое} ≥ [$\\sqrt{ab}$]{среднее геометрическое}
+правило: Только при $a ≥ 0$, $b ≥ 0$. Равенство — при $a = b$.
+контрпример: $a = −1$, $b = −4$: $−2,5 ≥ 2$ — неверно`},
+{g:'Алгебра 10–11 (углубл.)',t:'Принцип Дирихле',s:
+`# проверяет: батарея олимпиадных идей с примерами задач
+тема: Олимпиадные идеи
+Принцип Дирихле -> n + 1 кролик в n клетках? Тогда в одной клетке хотя бы два кролика.
+  пример: Из 13 людей двое родились в одном месяце.
+Инвариант -> Величина, которая не меняется при разрешённых операциях.
+  пример: Чётность суммы при замене двух чисел их разностью.
+Крайний элемент -> Рассмотри наибольший или наименьший объект.`},
+/* ======================= 10–11 ГЕОМЕТРИЯ ======================= */
+{g:'Геометрия 10–11',t:'Расположение прямых в пространстве',s:
+`# проверяет: шеренга с вопросами-признаками
+тема: Две прямые в пространстве
+связка: Пересекаются | Параллельны | Скрещиваются
+Общие точки -> одна | нет | нет
+В одной плоскости? -> да | да | нет
+---
+рисунок: куб с тремя парами рёбер`},
+{g:'Геометрия 10–11',t:'Многогранники',s:
+`# проверяет: дерево трёх уровней
+тема: Многогранники
+Призмы
+  - прямая
+  - наклонная
+  - правильная
+Пирамиды
+  - правильная
+  - усечённая
+Правильные
+  - тетраэдр
+  - куб
+  - октаэдр`},
+{g:'Геометрия 10–11',t:'Объёмы тел',s:
+`# проверяет: батарея формул, выноска справа
+тема: Объёмы тел
+класс: 11
+Призма, цилиндр -> $V = S_{осн} · h$
+Пирамида, конус -> $V = \\frac{1}{3} S_{осн} · h$
+  выноска: Ровно треть призмы
+Шар -> $V = \\frac{4}{3}πR^3$`},
+{g:'Геометрия 10–11',t:'Теорема о трёх перпендикулярах',s:
+`# проверяет: разбор логики «если — то» с тремя частями, рисунок
+тема: Теорема о трёх перпендикулярах
+пример: Если [прямая в плоскости]{a ⊂ α} ⊥ [проекции наклонной]{AH}, то она ⊥ [самой наклонной]{AM}.
+рисунок: плоскость α, наклонная AM, проекция HM`},
+/* ======================= 10–11 ВиС ======================= */
+{g:'ВиС 10–11',t:'Перестановки, размещения, сочетания',s:
+`# проверяет: шеренга в три столбца с вопросами и формулами
+тема: Комбинаторика: что выбрать?
+связка: Перестановки | Размещения | Сочетания
+Порядок важен? -> да | да | нет
+Берём все? -> да | k из n | k из n
+Формула -> $P_n = n!$ | $A_n^k = n!/(n−k)!$ | $C_n^k = n!/(k!(n−k)!)$`},
+{g:'ВиС 10–11',t:'Схема Бернулли',s:
+`# проверяет: разбор формулы с индексами и степенями
+тема: Формула Бернулли
+пример: P = [$C_n^k$]{число способов выбрать k успехов} · [$p^k$]{k успехов} · [$q^{n−k}$]{остальные неудачи}
+правило: $q = 1 − p$; испытания независимы.`},
+{g:'ВиС 10–11',t:'Характеристики случайной величины',s:
+`# проверяет: гном с формулами и черта
+схема: гном
+опр: Математическое ожидание -> Это среднее значение с учётом вероятностей: $E X = Σ x_i p_i$.
+опр: Дисперсия -> Это среднее квадрата отклонения от ожидания: $D X = E(X − E X)^2$.
+  | Стандартное отклонение $σ = \\sqrt{D X}$ — в тех же единицах, что и X.`},
+/* ======================= 10–11 ИНФОРМАТИКА (база) ======================= */
+{g:'Информатика 10–11',t:'Позиционная запись числа',s:
+`# проверяет: подписи-степени под цифрами
+тема: Перевод из двоичной системы
+пример: [1]{$2^3$}[0]{$2^2$}[1]{$2^1$}[1]{$2^0$}$_2$ = 8 + 0 + 2 + 1 = $11_{10}$`},
+{g:'Информатика 10–11',t:'Логические операции',s:
+`# проверяет: шеренга с кодом в ячейках
+тема: Логические операции
+связка: И (∧) | ИЛИ (∨) | Импликация (→)
+Истина, когда -> оба истинны | хотя бы одно истинно | кроме 1 → 0
+В Python -> \`a and b\` | \`a or b\` | \`not a or b\``},
+{g:'Информатика 10–11',t:'Законы алгебры логики',s:
+`# проверяет: батарея формул
+тема: Законы алгебры логики
+закон: де Моргана -> $¬(A ∧ B) = ¬A ∨ ¬B$
+  | и $¬(A ∨ B) = ¬A ∧ ¬B$
+закон: двойного отрицания -> $¬¬A = A$
+закон: исключённого третьего -> $A ∨ ¬A = 1$`},
+/* ======================= 10–11 ИНФОРМАТИКА (углубл., Поляков–Еремин) ======================= */
+{g:'Информатика 10–11 (углубл., Поляков)',t:'IP-адрес и маска',s:
+`# проверяет: разбор адреса, правило → цель
+тема: Адрес сети и номер узла
+правило → маска: В маске единицы — часть сети, нули — часть узла.
+пример: [192.168.1]{адрес сети}.[10]{номер узла} / [24]{маска: 24 единицы}
+---
+пример: Маска /24 = 255.255.255.0 — узлов в сети $2^8 − 2 = 254$`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Количество информации',s:
+`# проверяет: разбор формул Хартли, гном
+схема: гном
+формула: Хартли ->
+  $$N = 2^i$$
+  пример: 32 буквы → $i = 5$ бит
+формула: объёма сообщения -> [$I$]{объём} = [$K$]{символов} · [$i$]{бит на символ}`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Сортировки',s:
+`# проверяет: шеренга с O-нотацией
+тема: Алгоритмы сортировки
+связка: Пузырёк | Выбор | Быстрая
+Идея -> Соседние меняем местами | Ищем минимум и ставим вперёд | Делим относительно опорного
+Время в среднем -> $O(n^2)$ | $O(n^2)$ | $O(n \\log n)$
+Устойчивая? -> да | нет | нет`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Рекурсия',s:
+`# проверяет: разбор кода, правило → цель, код в зоне
+тема: Рекурсивная функция
+правило → база: Без базы рекурсия не остановится!
+пример: [\`if n == 0: return 1\`]{база} · [\`return n * f(n−1)\`]{шаг}
+---
+\`def f(n):
+\`    if n == 0:
+\`        return 1
+\`    return n * f(n - 1)`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Динамическое программирование',s:
+`# проверяет: лестница шагов с примером
+тема: Как решать задачу динамикой
+1. Определить, что хранит $dp[i]$.
+2. Записать рекуррентное соотношение.
+3. Задать начальные значения.
+4. Выбрать порядок вычисления и найти ответ.
+  пример: Число путей кузнечика: $dp[i] = dp[i−1] + dp[i−2]$`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Стек и очередь',s:
+`# проверяет: очная ставка со связкой
+тема: Стек и очередь
+связка: Стек | Очередь
+Последним пришёл — первым ушёл (LIFO) >< Первым пришёл — первым ушёл (FIFO)
+\`append\` / \`pop\` >< \`append\` / \`popleft\`
+Отмена действий, рекурсия >< Обход в ширину, печать`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'ООП',s:
+`# проверяет: батарея с кодом
+тема: Основы ООП
+Класс -> Описание объектов: поля и методы.
+  \`class Point:
+  \`    def __init__(self, x, y): ...
+Объект -> Экземпляр класса.
+  \`p = Point(1, 2)
+Наследование -> Новый класс на основе старого.
+Инкапсуляция -> Скрытие внутреннего устройства.`},
+{g:'Информатика 10–11 (углубл., Поляков)',t:'Запрос SQL',s:
+`# проверяет: разбор SQL-запроса
+тема: Запрос на выборку
+пример: [SELECT]{что выбрать} [name, age]{поля} [FROM]{откуда} [students]{таблица} [WHERE]{условие} [age > 16]{фильтр}`},
+/* ======================= ПРОГРАММИРОВАНИЕ 9–11 ======================= */
+{g:'Программирование 9–11',t:'Python и C++',s:
+`# проверяет: многоэтажная очная ставка с кодом
+тема: Python и C++ (УМК Полякова)
+связка: Python | C++
+\`a = int(input())\` >< \`int a; cin >> a;\`
+Тип определяется сам >< Тип объявляется явно
+Блоки — отступами >< Блоки — фигурными скобками
+стрелка: Алгоритмы одинаковые — разный синтаксис`},
+{g:'Программирование 9–11',t:'Срезы',s:
+`# проверяет: вложенные квадратные скобки в разборе
+тема: Срез строки
+пример: s[[1]{start}:[7]{stop — не включается}:[2]{step}]
+пример: "информатика"[1:7:2] → "нор"`},
+/* ======================= ФИЗИКА 10–11 ======================= */
+{g:'Физика 10–11',t:'Изопроцессы',s:
+`# проверяет: шеренга в три столбца
+тема: Изопроцессы в идеальном газе
+класс: 10
+связка: Изотермический | Изобарный | Изохорный
+Постоянна -> $T$ | $p$ | $V$
+Закон -> $pV = const$ | $V/T = const$ | $p/T = const$
+Имя -> Бойля–Мариотта | Гей-Люссака | Шарля`},
+{g:'Физика 10–11',t:'Уравнение состояния',s:
+`# проверяет: разбор формулы с единицами
+тема: Уравнение Менделеева — Клапейрона
+пример: [$p$]{давление, Па} · [$V$]{объём, м³} = [$ν$]{количество вещества, моль} · [$R$]{8,31 Дж/(моль·К)} · [$T$]{температура, К}
+правило → T: Температуру — только в кельвинах!`},
+{g:'Физика 10–11',t:'Закон Ома для полной цепи',s:
+`# проверяет: разбор дроби, стрелка, вывод
+тема: Закон Ома для полной цепи
+пример: [$I$]{сила тока} = [$ε$]{ЭДС} / ([$R$]{внешнее сопротивление} + [$r$]{внутреннее})
+стрелка: Короткое замыкание: R → 0
+- $I_{кз} = ε / r$ — опасно большой ток`},
+{g:'Физика 10–11',t:'Последовательное и параллельное',s:
+`# проверяет: шеренга в два столбца
+тема: Соединение проводников
+связка: Последовательное | Параллельное
+Сила тока -> одинакова | складывается
+Напряжение -> складывается | одинаково
+Сопротивление -> $R = R_1 + R_2$ | $1/R = 1/R_1 + 1/R_2$`},
+{g:'Физика 10–11',t:'Фотоэффект',s:
+`# проверяет: разбор уравнения Эйнштейна
+тема: Уравнение Эйнштейна для фотоэффекта
+пример: [$hν$]{энергия фотона} = [$A_{вых}$]{работа выхода} + [$mv^2/2$]{кинетическая энергия электрона}
+правило: Если $hν < A_{вых}$ — фотоэффекта нет (красная граница).`},
+{g:'Физика 10–11',t:'Ядерная реакция',s:
+`# проверяет: верхние и нижние индексы в разборе
+тема: Запись ядерной реакции
+правило: Суммы массовых (верхних) и зарядовых (нижних) чисел сохраняются. Проверка: 14 + 4 = 17 + 1, 7 + 2 = 8 + 1.
+пример: [$^{14}_{7}N$]{азот} + [$^{4}_{2}He$]{α-частица} → [$^{17}_{8}O$]{кислород} + [$^{1}_{1}p$]{протон}
+  связь азот → кислород: превращение`},
+{g:'Физика 10–11 (углубл.)',t:'Гармонические колебания',s:
+`# проверяет: разбор формулы со скобками
+тема: Уравнение гармонических колебаний
+пример: x = [$A$]{амплитуда} · cos([$ω$]{циклическая частота}t + [$φ_0$]{начальная фаза})
+формула: связи -> $ω = 2π/T = 2πν$`},
+{g:'Физика 10–11 (углубл.)',t:'Правило Ленца',s:
+`# проверяет: сцена-рассуждение без разбора
+тема: Правило Ленца
+правило: Индукционный ток своим магнитным полем противодействует изменению магнитного потока.
+стрелка: Магнит приближаем — поток растёт
+- Ток катушки отталкивает магнит.
+  | Иначе получился бы вечный двигатель.`},
+{g:'Физика 10–11 (углубл.)',t:'Классическая и релятивистская механика',s:
+`# проверяет: многоэтажная очная ставка, общая стрелка
+тема: Механика Ньютона и теория относительности
+связка: Ньютон | Эйнштейн
+Время одинаково для всех >< Время зависит от скорости
+Скорости складываются >< Скорость света предельна
+$E_к = mv^2/2$ >< $E = mc^2$
+стрелка: При $v ≪ c$ формулы Эйнштейна переходят в формулы Ньютона`}
+);
+// Агрегатные состояния — теперь шеренгой
+EXAMPLES.forEach(e=>{if(e.t==='Агрегатные состояния')e.s=
+`# проверяет: шеренга — сравнение ТРЁХ объектов по признакам
+тема: Агрегатные состояния вещества
+класс: 7
+связка: Твёрдое | Жидкое | Газ
+Форма -> сохраняет | не сохраняет | не сохраняет
+Объём -> сохраняет | сохраняет | не сохраняет
+Частицы -> колеблются на месте | перескакивают | летают свободно
+Пример -> лёд | вода | пар`;});
+
+"use strict";
+/* Версия 4: выкладка, пустое место [], \n и \t, английские синонимы, приоритет конструкций */
+EXAMPLES.push(
+{g:'v4: исправления',t:'Классы числа (пример не рвётся)',s:
+`# проверяет: текст примера не раздвигается; подписи — по рядам
+тема: Как читать многозначное число?
+правило → класс тысяч: Цифры разбивают на классы по три, справа налево.
+пример: [12]{класс миллионов} [345]{класс тысяч} [678]{класс единиц}`},
+{g:'v4: исправления',t:'Стрелка в пустое место []',s:
+`# проверяет: пустой сегмент [] — указатель на промежуток
+тема: Как записать многозначное число?
+правило → промежуток: Между классами оставляют небольшой промежуток.
+пример: 12[]{промежуток}345[]{}678`},
+{g:'v4: исправления',t:'Пустое место: пропущенный знак',s:
+`# проверяет: стрелка правила в место, где должен стоять знак
+тема: Где поставить запятую?
+правило → здесь: Перед «а» и «но» ставится запятая.
+пример: Мы хотели пойти в кино[]{здесь} но пошёл дождь.`},
+{g:'v4: исправления',t:'Компоненты действий (без жёлтого на жёлтом)',s:
+`# проверяет: разбор внутри жёлтого блока — во вкладке белого «примера»
+тема: Как называются числа при действиях?
+класс: 5
+Сложение -> [15]{слагаемое} + [7]{слагаемое} = [22]{сумма}
+Вычитание -> [15]{уменьшаемое} − [7]{вычитаемое} = [8]{разность}`},
+{g:'v4: выкладка',t:'Решение уравнения',s:
+`# проверяет: выкладка в сцене; знаки в столбик; обоснования справа
+тема: Решите уравнение
+пример: 3(x − 2) = x + 4
+  = 3x − 6 = x + 4      {раскрыли скобки}
+  => 2x = 10            {перенесли с другим знаком}
+  => x = 5              {разделили на 2}`},
+{g:'v4: выкладка',t:'Доказательство неравенства',s:
+`# проверяет: выкладка с формулами, ≥ из >=
+тема: Докажите: $a^2 + b^2 ≥ 2ab$
+пример: $a^2 + b^2 − 2ab$
+  = $(a − b)^2$     {формула квадрата разности}
+  >= 0              {квадрат неотрицателен}
+стрелка: Значит, $a^2 + b^2 ≥ 2ab$; равенство при $a = b$.`},
+{g:'v4: выкладка',t:'Выкладка внутри запоминателя',s:
+`# проверяет: выкладка в жёлтом блоке — белая вкладка
+схема: гном
+формула: разности квадратов -> $a^2 − b^2 = (a − b)(a + b)$
+  пример: $99 · 101$
+    = (100 − 1)(100 + 1)   {представили}
+    = 10000 − 1            {разность квадратов}
+    = 9999`},
+{g:'v4: выкладка',t:'Цепочка следствий (олимпиада)',s:
+`# проверяет: ⇒ и ⇔, длинные обоснования переносятся
+тема: Найдите все натуральные n, при которых $n^2 + 1$ делится на 3
+пример: $n ≡ 0, 1, 2 \\pmod 3$
+  => $n^2 ≡ 0, 1, 1 \\pmod 3$   {перебрали все остатки при делении на 3}
+  => $n^2 + 1 ≡ 1, 2, 2 \\pmod 3$
+  <=> никогда не делится на 3 {ни один остаток не равен нулю}`},
+{g:'v4: выкладка',t:'Физика: решение задачи',s:
+`# проверяет: выкладка с единицами
+тема: Какую силу надо приложить, чтобы поднять 50 кг рычагом 1 : 5?
+пример: $F_1 · l_1 = F_2 · l_2$
+  => $F_1 = F_2 · l_2 / l_1$   {выразили}
+  = 500 Н · 1/5               {вес груза mg ≈ 500 Н}
+  = 100 Н`},
+{g:'v4: \\n и \\t',t:'Перенос и отступ в тексте',s:
+`# проверяет: \\n — новая строка, \\t — отступ, \\ в конце — продолжение строки
+тема: Стихотворное правило
+- Жи, ши — пиши с буквой «и».\\nЧа, ща — пиши с буквой «а».
+- Пример:\\n\\tжираф, шина\\n\\tчаща, щавель
+- Очень длинный пункт можно записать \\
+  на нескольких строках исходного текста.`},
+{g:'v4: синонимы',t:'Английские ключевые слова',s:
+`# проверяет: topic/link/rule/example/callout/def…
+topic: Simple types
+grade: 10
+def: int -> Это целое число.
+  callout: 5, −12, 10**100
+def: float -> Это дробное число.
+  example: 3.14`},
+{g:'v4: синонимы',t:'Регистр важен: «Тема:» — текст',s:
+`# проверяет: ключевые слова только строчные; «Тема:» с заглавной — обычный текст
+тема: Регистр
+Тема: это просто пункт с двоеточием
+- Ключевые слова пишутся только строчными, как в Python.`},
+{g:'v4: приоритет',t:'Маркер сильнее оператора',s:
+`# проверяет: «- A -> B» — пункт, стрелка показана как текст, есть подсказка
+тема: Приоритет
+- Плавление -> переход из твёрдого в жидкое
+Испарение -> переход из жидкого в газ`},
+{g:'v4: вложенность',t:'Ошибка вложенности',s:
+`# проверяет: подсказка «не может стоять внутри»
+тема: Вложенность
+стрелка: Значит
+  - так нельзя`}
+);
+
+"use strict";
+/* Версия 5. Полная сетка: предмет × класс × уровень (база / углубл.).
+   1) Переразметка старых примеров: 10 и 11 классы раздельно, «Программирование» — в информатику.
+   2) Новые примеры: математика 5–6, алгебра 7–11, геометрия 7–11. */
+(function(){
+const REMAP={
+ 'Ввод и вывод':'Информатика 8','Ветвление if':'Информатика 8','Присваивание a = a + 1':'Информатика 8','while и for':'Информатика 8',
+ 'Типы данных':'Информатика 8','Ошибки':'Информатика 8','Ключевые слова Python':'Информатика 8',
+ 'Python и C++':'Информатика 10 (углубл.)','Срезы':'Информатика 10 (углубл.)',
+ 'Логарифм':'Алгебра 10','Знаки тригонометрических функций':'Алгебра 10','Таблица производных':'Алгебра 11','Исследование функции':'Алгебра 11','Производная и первообразная':'Алгебра 11',
+ 'Метод математической индукции':'Алгебра 10 (углубл.)','Обоснование переходов (олимпиадный приём)':'Алгебра 10 (углубл.)','Разбор случаев':'Алгебра 10 (углубл.)',
+ 'Комплексные числа':'Алгебра 11 (углубл.)','Неравенство о средних':'Алгебра 11 (углубл.)','Принцип Дирихле':'Алгебра 11 (углубл.)',
+ 'Расположение прямых в пространстве':'Геометрия 10','Многогранники':'Геометрия 10','Теорема о трёх перпендикулярах':'Геометрия 10','Объёмы тел':'Геометрия 11',
+ 'Перестановки, размещения, сочетания':'ВиС 10','Схема Бернулли':'ВиС 11','Характеристики случайной величины':'ВиС 11',
+ 'Позиционная запись числа':'Информатика 10','Логические операции':'Информатика 10','Законы алгебры логики':'Информатика 10',
+ 'Количество информации':'Информатика 10 (углубл.)','Сортировки':'Информатика 10 (углубл.)','Рекурсия':'Информатика 10 (углубл.)',
+ 'IP-адрес и маска':'Информатика 11 (углубл.)','Динамическое программирование':'Информатика 11 (углубл.)','Стек и очередь':'Информатика 11 (углубл.)','ООП':'Информатика 11 (углубл.)','Запрос SQL':'Информатика 11 (углубл.)',
+ 'Изопроцессы':'Физика 10','Уравнение состояния':'Физика 10','Закон Ома для полной цепи':'Физика 10','Последовательное и параллельное':'Физика 10',
+ 'Фотоэффект':'Физика 11','Ядерная реакция':'Физика 11',
+ 'Гармонические колебания':'Физика 11 (углубл.)','Правило Ленца':'Физика 11 (углубл.)','Классическая и релятивистская механика':'Физика 11 (углубл.)'
+};
+for(const e of EXAMPLES){ if(REMAP[e.t]) e.g=REMAP[e.t]; }
+})();
+
+EXAMPLES.push(
+/* ======================= МАТЕМАТИКА 5 · УГЛУБЛ. ======================= */
+{g:'Математика 5 (углубл.)',t:'Делимость суммы',s:
+`# проверяет: гном, теорема:, привязанный пример, контрпример
+схема: гном
+класс: 5
+теорема: о делимости суммы -> Каждое слагаемое делится на число? Тогда и сумма делится.
+  пример: 35 и 14 делятся на 7. Значит, 49 делится на 7
+  контрпример: 5 + 9 = 14 делится на 7, но слагаемые — нет. Обратное неверно!`},
+{g:'Математика 5 (углубл.)',t:'Задачи на движение',s:
+`# проверяет: шеренга в три столбца, формулы в ячейках, стрелка
+тема: Скорость сближения и удаления
+класс: 5
+связка: Навстречу | Вдогонку | В разные стороны
+Скорость -> $v_1 + v_2$ | $v_1 − v_2$ | $v_1 + v_2$
+Расстояние -> уменьшается | уменьшается | увеличивается
+стрелка: Время встречи: $t = S : v_{сбл}$`},
+{g:'Математика 5 (углубл.)',t:'Задачи на части',s:
+`# проверяет: лестница с нумерованными шагами, уточнение у заголовка, выкладка в примере
+тема: Как решать задачу на части
+  уточнение: Для варенья берут 2 части ягод и 3 части сахара. Всего 10 кг.
+1. Принять одну часть за x.
+2. Выразить все величины через x: ягоды 2x, сахар 3x.
+3. Составить уравнение по общему количеству.
+  пример: 2x + 3x = 10
+    => 5x = 10      {привели подобные}
+    => x = 2        {одна часть — 2 кг}
+4. Ответить на вопрос задачи: ягод 4 кг, сахара 6 кг.`},
+/* ======================= МАТЕМАТИКА 6 · УГЛУБЛ. ======================= */
+{g:'Математика 6 (углубл.)',t:'НОД через разложение',s:
+`# проверяет: сцена, правило → цель, разбор степеней, выкладка
+тема: Как найти НОД разложением на простые множители
+правило → общие: Берём общие простые множители с наименьшим показателем.
+пример: 84 = [$2^2$]{общие} · [3]{общие} · 7
+пример: 90 = [2]{общие} · [$3^2$]{общие} · 5
+стрелка: НОД(84, 90) = 2 · 3 = 6`},
+{g:'Математика 6 (углубл.)',t:'Модуль и расстояние',s:
+`# проверяет: опр + разбор с модулем, выноска, контрпример
+тема: Расстояние между точками прямой
+опр: Расстояние -> Это модуль разности координат.
+пример: AB = [$|a − b|$]{расстояние}
+выноска: A(−3), B(5): |−3 − 5| = 8
+контрпример: −3 − 5 = −8 — расстояние не бывает отрицательным`},
+{g:'Математика 6 (углубл.)',t:'Делимость на 4 и 25',s:
+`# проверяет: батарея признаков, выноски справа, черта
+тема: Признаки делимости на 4 и 25
+класс: 6
+признак: на 4 -> Число из двух последних цифр делится на 4.
+  выноска: 1316: 16 делится на 4
+признак: на 25 -> Последние две цифры — 00, 25, 50 или 75.
+  | Причина: 100 делится на 4 и на 25.`},
+/* ======================= АЛГЕБРА 8 ======================= */
+{g:'Алгебра 8',t:'Квадратный корень',s:
+`# проверяет: гном, опр с формулой, маркеры, черта, контрпример
+схема: гном
+класс: 8
+опр: Арифметический квадратный корень из a -> Это неотрицательное число, квадрат которого равен a.
+  * $\\sqrt{a} ≥ 0$
+  * $(\\sqrt{a})^2 = a$ при $a ≥ 0$
+  | Корень из отрицательного числа не определён.
+свойство: корня из квадрата -> $\\sqrt{a^2} = |a|$
+  контрпример: $\\sqrt{(−3)^2} = −3$ — неверно, верно 3`},
+{g:'Алгебра 8',t:'Дискриминант',s:
+`# проверяет: дерево с формулами в узлах, разбор формулы
+тема: Сколько корней у квадратного уравнения?
+пример: D = [$b^2$]{квадрат второго коэффициента} − [$4ac$]{учетверённое произведение}
+---
+схема: дерево
+тема: Знак дискриминанта
+D > 0
+  - два корня
+  - $x = (−b ± \\sqrt D)/2a$
+D = 0
+  - один корень
+  - $x = −b/2a$
+D < 0
+  - корней нет`},
+{g:'Алгебра 8',t:'Теорема Виета',s:
+`# проверяет: теорема в гноме, рамочные формулы, выкладка-проверка
+схема: гном
+класс: 8
+теорема: Виета -> Для $x^2 + px + q = 0$ сумма корней равна $−p$, произведение равно $q$.
+  $$x_1 + x_2 = −p, \\quad x_1 x_2 = q$$
+  пример: $x^2 − 5x + 6 = 0$
+    => $x_1 + x_2 = 5$, $x_1 x_2 = 6$   {по теореме Виета}
+    => $x_1 = 2$, $x_2 = 3$           {подобрали}`},
+/* ======================= АЛГЕБРА 8 · УГЛУБЛ. ======================= */
+{g:'Алгебра 8 (углубл.)',t:'Иррациональность √2',s:
+`# проверяет: выкладка-доказательство от противного, ⇒, обоснования
+тема: Докажите, что $\\sqrt 2$ — иррациональное число
+пример: Пусть $\\sqrt 2 = p/q$, дробь несократима
+  => $p^2 = 2q^2$          {возвели в квадрат}
+  => $p = 2k$              {$p^2$ чётно, значит, p чётно}
+  => $q^2 = 2k^2$          {подставили}
+  => q чётно               {так же}
+стрелка: Противоречие: p и q оба чётные, а дробь несократима.`},
+{g:'Алгебра 8 (углубл.)',t:'Разложение квадратного трёхчлена',s:
+`# проверяет: формула с разбором, привязанный пример, правило без цели
+тема: Разложение трёхчлена на множители
+пример: $ax^2 + bx + c$ = [a]{старший коэффициент}(x − [$x_1$]{корень})(x − [$x_2$]{корень})
+правило: Работает, только если $D ≥ 0$.
+пример: $2x^2 − 7x + 3$
+  = 2(x − 3)(x − 1/2)   {корни 3 и 1/2}
+  = (x − 3)(2x − 1)`},
+{g:'Алгебра 8 (углубл.)',t:'Уравнение с параметром',s:
+`# проверяет: шеренга по случаям, вопросы-признаки
+тема: Сколько корней у $ax^2 + 2x + 1 = 0$?
+связка: a = 0 | a ≠ 0, a < 1 | a = 1 | a > 1
+Тип уравнения -> линейное | квадратное | квадратное | квадратное
+D = 4 − 4a -> — | D > 0 | D = 0 | D < 0
+Корней -> один | два | один | нет`},
+/* ======================= АЛГЕБРА 9 · УГЛУБЛ. ======================= */
+{g:'Алгебра 9 (углубл.)',t:'Бесконечно убывающая прогрессия',s:
+`# проверяет: разбор формулы, правило-условие, выкладка с периодической дробью
+тема: Сумма бесконечно убывающей геометрической прогрессии
+пример: S = [$b_1$]{первый член} / (1 − [q]{знаменатель})
+правило: Только при $|q| < 1$.
+пример: 0,(3) = 0,3 + 0,03 + …
+  = 0,3 / (1 − 0,1)   {$b_1 = 0,3$, $q = 0,1$}
+  = 1/3`},
+{g:'Алгебра 9 (углубл.)',t:'Чётные и нечётные функции',s:
+`# проверяет: многоэтажная очная ставка со связкой, формулы, стрелка
+тема: Чётная или нечётная?
+связка: Чётная | Нечётная
+$f(−x) = f(x)$ >< $f(−x) = −f(x)$
+График симметричен относительно оси Oy >< График симметричен относительно начала координат
+$x^2$, $|x|$, $\\cos x$ >< $x^3$, $1/x$, $\\sin x$
+стрелка: Область определения должна быть симметрична относительно нуля`},
+{g:'Алгебра 9 (углубл.)',t:'Метод интервалов: кратные корни',s:
+`# проверяет: лестница, правило → цель, разбор степени
+тема: Метод интервалов с кратными корнями
+правило → чётная: При переходе через корень чётной кратности знак не меняется.
+пример: $(x − 1)$[$^2$]{чётная}$(x + 3)$[$^1$]{нечётная} > 0
+1. Отметить корни −3 и 1 на прямой.
+2. Найти знак на крайнем правом промежутке: «+».
+3. Через −3 знак меняется, через 1 — нет.
+4. Ответ: $(−3; 1) ∪ (1; +∞)$.`},
+/* ======================= АЛГЕБРА 10 ======================= */
+{g:'Алгебра 10',t:'Значения тригонометрических функций',s:
+`# проверяет: шеренга в пять столбцов с формулами, стрелка-мнемоника
+тема: Основные значения
+класс: 10
+связка: 0 | π/6 | π/4 | π/3 | π/2
+sin -> 0 | 1/2 | $\\sqrt2/2$ | $\\sqrt3/2$ | 1
+cos -> 1 | $\\sqrt3/2$ | $\\sqrt2/2$ | 1/2 | 0
+стрелка: Синус растёт: $\\sqrt0/2$, $\\sqrt1/2$, $\\sqrt2/2$, $\\sqrt3/2$, $\\sqrt4/2$`},
+/* ======================= ГЕОМЕТРИЯ 7 · УГЛУБЛ. ======================= */
+{g:'Геометрия 7 (углубл.)',t:'Неравенство треугольника',s:
+`# проверяет: теорема в сцене, разбор, контрпример
+тема: Неравенство треугольника
+теорема: Каждая сторона треугольника меньше суммы двух других.
+пример: [a]{любая сторона} < [b + c]{сумма двух других}
+контрпример: 2, 3, 6: 6 > 2 + 3 — такого треугольника нет`},
+{g:'Геометрия 7 (углубл.)',t:'Доказательство от противного',s:
+`# проверяет: лестница со связкой, привязанный пример
+тема: Метод доказательства от противного
+связка: Чтобы доказать утверждение:
+1. Предположить, что верно обратное.
+2. Рассуждать, опираясь на это предположение.
+3. Прийти к противоречию с условием или известным фактом.
+4. Сделать вывод: предположение неверно, утверждение верно.
+  пример: Две прямые, параллельные третьей, параллельны: иначе через точку прошли бы две параллельные одной прямой`},
+/* ======================= ГЕОМЕТРИЯ 8 ======================= */
+{g:'Геометрия 8',t:'Четырёхугольники',s:
+`# проверяет: дерево трёх уровней
+схема: дерево
+тема: Четырёхугольники
+Параллелограммы
+  - прямоугольник
+  - ромб
+  - квадрат
+Трапеции
+  - равнобедренная
+  - прямоугольная
+Прочие
+  - дельтоид`},
+{g:'Геометрия 8',t:'Теорема Пифагора',s:
+`# проверяет: теорема с разбором формулы, рисунок, следствие, выноска
+тема: Теорема Пифагора
+теорема: В прямоугольном треугольнике квадрат гипотенузы равен сумме квадратов катетов.
+пример: [$c^2$]{гипотенуза} = [$a^2$]{катет} + [$b^2$]{катет}
+рисунок: прямоугольный треугольник ABC, ∠C = 90°
+следствие: Гипотенуза больше любого катета.
+  выноска: Египетский треугольник: 3, 4, 5`},
+{g:'Геометрия 8',t:'Площади фигур',s:
+`# проверяет: батарея формул (указатель — фигура), рамочные формулы
+тема: Формулы площадей
+класс: 8
+Прямоугольник ->
+  $$S = ab$$
+Параллелограмм ->
+  $$S = a h_a$$
+Треугольник ->
+  $$S = \\frac12 a h_a$$
+Трапеция ->
+  $$S = \\frac{a + b}2 · h$$`},
+/* ======================= ГЕОМЕТРИЯ 8 · УГЛУБЛ. ======================= */
+{g:'Геометрия 8 (углубл.)',t:'Вписанный угол',s:
+`# проверяет: гном: теорема и два следствия с рисунком и выноской
+схема: гном
+класс: 8
+теорема: о вписанном угле -> Вписанный угол равен половине центрального, опирающегося на ту же дугу.
+  рисунок: окружность, ∠ACB и ∠AOB
+следствие: 1 -> Вписанные углы, опирающиеся на одну дугу, равны.
+следствие: 2 -> Угол, опирающийся на диаметр, прямой.
+  выноска: Так строят прямой угол циркулем`},
+{g:'Геометрия 8 (углубл.)',t:'Признаки подобия',s:
+`# проверяет: батарея признаков, общая стрелка, черта
+тема: Признаки подобия треугольников
+признак: 1-й -> По двум углам.
+признак: 2-й -> Две стороны пропорциональны, углы между ними равны.
+признак: 3-й -> Три стороны пропорциональны.
+  | Отношение площадей равно квадрату коэффициента подобия.`},
+{g:'Геометрия 8 (углубл.)',t:'Замечательные точки треугольника',s:
+`# проверяет: шеренга в четыре столбца, длинные ячейки
+тема: Замечательные точки треугольника
+связка: Медианы | Биссектрисы | Высоты | Серединные перпендикуляры
+Точка пересечения -> центр масс | центр вписанной окружности | ортоцентр | центр описанной окружности
+Всегда внутри? -> да | да | нет | нет`},
+/* ======================= ГЕОМЕТРИЯ 9 ======================= */
+{g:'Геометрия 9',t:'Сложение векторов',s:
+`# проверяет: очная ставка со связкой, рисунки в сторонах, общая стрелка
+тема: Как сложить два вектора
+связка: Правило треугольника | Правило параллелограмма
+Конец первого совмещаем с началом второго >< Откладываем оба вектора от одной точки
+Сумма — от начала первого до конца второго >< Сумма — диагональ параллелограмма
+стрелка: Результат один и тот же: $\\vec a + \\vec b$`},
+/* ======================= ГЕОМЕТРИЯ 9 · УГЛУБЛ. ======================= */
+{g:'Геометрия 9 (углубл.)',t:'Расширенная теорема синусов',s:
+`# проверяет: разбор формулы с дробями, рисунок, следствие
+тема: Теорема синусов
+пример: [$a / \\sin A$]{сторона к синусу противолежащего угла} = $b / \\sin B$ = $c / \\sin C$ = [$2R$]{диаметр описанной окружности}
+рисунок: треугольник, вписанный в окружность радиуса R
+правило: Удобна, когда известны сторона и противолежащий угол.`},
+{g:'Геометрия 9 (углубл.)',t:'Скалярное произведение',s:
+`# проверяет: гном, опр с формулой, свойство с выкладкой
+схема: гном
+класс: 9
+опр: Скалярное произведение -> Это произведение длин векторов на косинус угла между ними.
+  $$\\vec a · \\vec b = |\\vec a| |\\vec b| \\cos φ = x_1 x_2 + y_1 y_2$$
+свойство: перпендикулярности -> $\\vec a ⊥ \\vec b$ ⇔ $\\vec a · \\vec b = 0$
+  пример: (2; 3) · (3; −2) = 6 − 6 = 0 — векторы перпендикулярны`},
+{g:'Геометрия 9 (углубл.)',t:'Движения плоскости',s:
+`# проверяет: эполеты, выноски под группами
+тема: Движения плоскости
+Сохраняют ориентацию:
+  - параллельный перенос
+  - поворот
+  - центральная симметрия
+Меняют ориентацию:
+  - осевая симметрия
+  - скользящая симметрия
+стрелка: Любое движение сохраняет расстояния между точками`},
+/* ======================= ГЕОМЕТРИЯ 10 · УГЛУБЛ. ======================= */
+{g:'Геометрия 10 (углубл.)',t:'Сечение методом следов',s:
+`# проверяет: лестница со связкой, рисунок, привязанный пример
+тема: Построение сечения методом следов
+связка: Чтобы построить сечение плоскостью MNK:
+1. Соединить точки, лежащие в одной грани.
+2. Продлить отрезок до пересечения с прямой основания — найти след.
+3. Через след провести прямую в плоскости основания.
+4. Соединить новые точки в гранях и обвести многоугольник.
+  рисунок: куб, точки M, N, K на рёбрах`},
+{g:'Геометрия 10 (углубл.)',t:'Двугранный угол',s:
+`# проверяет: опр, правило → цель, разбор, рисунок
+тема: Линейный угол двугранного угла
+опр: Двугранный угол -> Это фигура из двух полуплоскостей с общей границей.
+правило → перпендикуляры: Линейный угол образуют два перпендикуляра к ребру, проведённые из одной точки.
+пример: ∠ABC: [AB ⊥ ребру]{перпендикуляры}, [CB ⊥ ребру]{перпендикуляры}
+рисунок: двугранный угол с ребром l`},
+{g:'Геометрия 10 (углубл.)',t:'Компланарные векторы',s:
+`# проверяет: очная ставка, формулы с векторами, стрелка
+тема: Компланарны или нет?
+связка: Компланарны | Некомпланарны
+Лежат в параллельных плоскостях >< Не лежат в одной плоскости
+$\\vec c = x\\vec a + y\\vec b$ >< Любой вектор раскладывается по ним
+стрелка: Три некомпланарных вектора — базис пространства`},
+/* ======================= ГЕОМЕТРИЯ 11 ======================= */
+{g:'Геометрия 11',t:'Тела вращения',s:
+`# проверяет: шеренга с формулами, рисунок
+тема: Объёмы и площади тел вращения
+класс: 11
+связка: Цилиндр | Конус | Шар
+Объём -> $πR^2 h$ | $\\frac13 πR^2 h$ | $\\frac43 πR^3$
+Боковая поверхность -> $2πRh$ | $πRl$ | $4πR^2$
+---
+рисунок: цилиндр, конус и шар одного радиуса`},
+{g:'Геометрия 11',t:'Расстояние в координатах',s:
+`# проверяет: разбор формулы с корнем, выкладка-пример
+тема: Расстояние между точками пространства
+пример: AB = $\\sqrt{(x_2 − x_1)^2 + (y_2 − y_1)^2 + (z_2 − z_1)^2}$
+пример: A(1; 2; 3), B(3; 4; 4)
+  = $\\sqrt{4 + 4 + 1}$   {разности 2, 2, 1}
+  = 3`},
+/* ======================= ГЕОМЕТРИЯ 11 · УГЛУБЛ. ======================= */
+{g:'Геометрия 11 (углубл.)',t:'Уравнение плоскости',s:
+`# проверяет: разбор уравнения, правило → цель, привязанный пример
+тема: Уравнение плоскости
+правило → нормаль: Коэффициенты при x, y, z — координаты нормального вектора.
+пример: [$ax + by + cz$]{нормаль} + [$d$]{сдвиг} = 0
+  связь нормаль → сдвиг: при d = 0 плоскость проходит через начало
+пример: $2x − y + 3z − 5 = 0$ → $\\vec n(2; −1; 3)$`},
+{g:'Геометрия 11 (углубл.)',t:'Угол между прямой и плоскостью',s:
+`# проверяет: гном, опр, алгоритм:, формула
+схема: гном
+класс: 11
+опр: Угол между прямой и плоскостью -> Это угол между прямой и её проекцией на плоскость.
+алгоритм: в координатах -> $\\sin φ = |\\vec n · \\vec l| / (|\\vec n| |\\vec l|)$
+  | Синус, а не косинус: нормаль перпендикулярна плоскости.`},
+{g:'Геометрия 11 (углубл.)',t:'Вписанный и описанный шар',s:
+`# проверяет: многоэтажная очная ставка со связкой, стрелка
+тема: Шар и многогранник
+связка: Вписанный шар | Описанный шар
+Касается всех граней >< Проходит через все вершины
+Центр равноудалён от граней >< Центр равноудалён от вершин
+$r = 3V / S_{полн}$ >< У правильной пирамиды центр на высоте
+стрелка: У любого тетраэдра есть и вписанный, и описанный шар`}
+);
+
+"use strict";
+/* Версия 5, часть 2: вероятность и статистика 7–11, информатика 8–11, физика 8–11 (база и углубл.) */
+EXAMPLES.push(
+/* ======================= ВиС 7 · УГЛУБЛ. ======================= */
+{g:'ВиС 7 (углубл.)',t:'Высказывание и отрицание',s:
+`# проверяет: очная ставка «высказывание — отрицание», контрпример в зоне
+тема: Как построить отрицание
+связка: Высказывание | Отрицание
+Все числа чётные (ложь) >< Есть нечётное число (истина)
+Есть простое чётное число (истина) >< Все простые числа нечётные (ложь)
+стрелка: Из двух — ровно одно истинно
+---
+контрпример: «Все числа нечётные» — это не отрицание к «все числа чётные»`},
+{g:'ВиС 7 (углубл.)',t:'Столбиковая и круговая диаграммы',s:
+`# проверяет: очная ставка со связкой, общая стрелка
+тема: Какую диаграмму выбрать?
+связка: Столбиковая | Круговая
+Сравнивает величины >< Показывает доли целого
+Сумма может быть любой >< Сумма — 100%
+стрелка: Если частей больше 6–7, круговая становится нечитаемой`},
+{g:'ВиС 7 (углубл.)',t:'Частота и вероятность',s:
+`# проверяет: опр + разбор дроби, закон:, выноска
+тема: Частота события
+опр: Частота -> Это доля опытов, в которых событие наступило.
+пример: [m]{число опытов с событием} / [n]{число всех опытов}
+закон: больших чисел -> При большом числе опытов частота близка к вероятности.
+  выноска: 10 бросков монеты — 7 орлов; 10 000 бросков — около 5000`},
+/* ======================= ВиС 8 ======================= */
+{g:'ВиС 8',t:'Дисперсия',s:
+`# проверяет: разбор формулы с чертой над буквой, выкладка-пример
+тема: Дисперсия набора чисел
+пример: D = среднее из [$(x_i − \\bar x)^2$]{квадраты отклонений от среднего}
+правило: Стандартное отклонение $σ = \\sqrt D$ — в тех же единицах, что данные.
+пример: Набор 1, 3, 5: среднее 3
+  = (4 + 0 + 4) / 3   {квадраты отклонений}
+  ≈ 2,67`},
+{g:'ВиС 8',t:'Операции над множествами',s:
+`# проверяет: шеренга с символами, рисунок
+тема: Объединение и пересечение
+связка: Объединение | Пересечение | Разность
+Знак -> A ∪ B | A ∩ B | A ∖ B
+Что входит -> хотя бы в одно | в оба сразу | в A, но не в B
+---
+рисунок: круги Эйлера для трёх операций`},
+{g:'ВиС 8',t:'Сложение вероятностей',s:
+`# проверяет: гном, теорема, формула, контрпример
+схема: гном
+класс: 8
+теорема: сложения -> Для несовместных событий $P(A ∪ B) = P(A) + P(B)$.
+  пример: На кубике «1» или «6»: 1/6 + 1/6 = 1/3
+  контрпример: «чётное» или «больше 3»: 3/6 + 3/6 = 1 — неверно, события совместны`},
+/* ======================= ВиС 8 · УГЛУБЛ. ======================= */
+{g:'ВиС 8 (углубл.)',t:'Формула включений и исключений',s:
+`# проверяет: разбор формулы, выкладка с обоснованием
+тема: Сколько элементов в объединении?
+пример: |A ∪ B| = |A| + |B| − [$|A ∩ B|$]{посчитано дважды}
+пример: В классе 15 любят футбол, 12 — шахматы, 5 — и то и другое
+  = 15 + 12 − 5   {вычли общих}
+  = 22`},
+{g:'ВиС 8 (углубл.)',t:'Условная вероятность',s:
+`# проверяет: разбор дроби, правило → цель
+тема: Условная вероятность
+правило → условие: После вертикальной черты — то, что уже известно.
+пример: P(A [|]{условие} B) = [$P(A ∩ B)$]{оба события} / [$P(B)$]{известное событие}
+пример: Выпало чётное. Вероятность, что это «6»: (1/6) / (1/2) = 1/3`},
+{g:'ВиС 8 (углубл.)',t:'Деревья в теории графов',s:
+`# проверяет: гном, опр, свойства с формулой
+схема: гном
+класс: 8
+опр: Дерево -> Это связный граф без циклов.
+свойство: числа рёбер -> В дереве с n вершинами ровно $n − 1$ ребро.
+свойство: единственности пути -> Между любыми двумя вершинами ровно один путь.
+  выноска: Удалите любое ребро — граф распадётся`},
+/* ======================= ВиС 9 ======================= */
+{g:'ВиС 9',t:'Геометрическая вероятность',s:
+`# проверяет: разбор дроби, рисунок, выкладка
+тема: Геометрическая вероятность
+пример: P = [$S_A$]{мера благоприятной области} / [$S$]{мера всей области}
+рисунок: квадрат и вписанный круг
+пример: Точку бросают в квадрат 2 × 2. Попадёт в круг радиуса 1?
+  = π / 4   {площади круга и квадрата}
+  ≈ 0,79`},
+{g:'ВиС 9',t:'Испытания Бернулли',s:
+`# проверяет: батарея определений с примерами
+тема: Серия испытаний Бернулли
+класс: 9
+опр: Испытание Бернулли -> Это опыт с двумя исходами: успех и неудача.
+  пример: бросок монеты, выстрел по мишени
+опр: Серия -> Это независимые повторения одного испытания.
+  | Вероятность успеха p в каждом испытании одна и та же.`},
+/* ======================= ВиС 9 · УГЛУБЛ. ======================= */
+{g:'ВиС 9 (углубл.)',t:'Распределение случайной величины',s:
+`# проверяет: шеренга-таблица распределения, стрелка-проверка
+тема: Число орлов при двух бросках монеты
+связка: 0 | 1 | 2
+Исходы -> РР | ОР, РО | ОО
+P -> 1/4 | 1/2 | 1/4
+стрелка: Проверка: сумма вероятностей 1/4 + 1/2 + 1/4 = 1`},
+{g:'ВиС 9 (углубл.)',t:'Математическое ожидание',s:
+`# проверяет: разбор суммы, выкладка
+тема: Математическое ожидание
+пример: E(X) = [$x_1 p_1$]{значение · вероятность} + $x_2 p_2$ + … + $x_n p_n$
+пример: Число орлов при двух бросках
+  = 0 · 1/4 + 1 · 1/2 + 2 · 1/4   {по таблице распределения}
+  = 1`},
+{g:'ВиС 9 (углубл.)',t:'Свойства ожидания',s:
+`# проверяет: гном, свойство с формулой, контрпример
+схема: гном
+класс: 9
+свойство: линейности -> $E(aX + b) = a·E(X) + b$
+свойство: суммы -> $E(X + Y) = E(X) + E(Y)$ — всегда, даже для зависимых.
+свойство: произведения -> $E(XY) = E(X)·E(Y)$ — только для независимых.
+  контрпример: X = Y = орёл (1/0): E(XY) = 1/2, а E(X)·E(Y) = 1/4`},
+/* ======================= ВиС 10 ======================= */
+{g:'ВиС 10',t:'Несовместные и независимые',s:
+`# проверяет: очная ставка «не путать», формулы, стрелка
+тема: Не путать!
+связка: Несовместные | Независимые
+Не могут произойти вместе >< Одно не влияет на вероятность другого
+$P(A ∩ B) = 0$ >< $P(A ∩ B) = P(A)·P(B)$
+Складываем вероятности >< Умножаем вероятности
+стрелка: Несовместные события с ненулевыми вероятностями всегда зависимы!`},
+{g:'ВиС 10',t:'Формула полной вероятности',s:
+`# проверяет: дерево с вероятностями, разбор формулы
+тема: Формула полной вероятности
+пример: P(A) = [$P(H_1)·P(A|H_1)$]{ветка 1} + [$P(H_2)·P(A|H_2)$]{ветка 2}
+---
+схема: дерево
+тема: Деталь с двух станков: брак?
+Станок 1 (0,6)
+  - брак 0,02
+Станок 2 (0,4)
+  - брак 0,05
+стрелка: P(брак) = 0,6 · 0,02 + 0,4 · 0,05 = 0,032`},
+/* ======================= ВиС 10 · УГЛУБЛ. ======================= */
+{g:'ВиС 10 (углубл.)',t:'Формула Байеса',s:
+`# проверяет: разбор дроби, правило → цель, выкладка
+тема: Формула Байеса
+правило → гипотеза: Байес «переворачивает» условие: по результату оцениваем причину.
+пример: P($H_1$|A) = [$P(H_1)·P(A|H_1)$]{гипотеза} / [P(A)]{полная вероятность}
+пример: Деталь бракованная. С первого станка?
+  = 0,012 / 0,032   {числитель — ветка станка 1}
+  = 0,375`},
+{g:'ВиС 10 (углубл.)',t:'Треугольник Паскаля',s:
+`# проверяет: гном, свойства сочетаний, выноска
+схема: гном
+класс: 10
+свойство: симметрии -> $C_n^k = C_n^{n−k}$
+свойство: Паскаля -> $C_n^k = C_{n−1}^{k−1} + C_{n−1}^k$
+  выноска: Каждое число — сумма двух над ним
+свойство: суммы -> $C_n^0 + C_n^1 + … + C_n^n = 2^n$`},
+{g:'ВиС 10 (углубл.)',t:'Геометрическое распределение',s:
+`# проверяет: опр, разбор формулы со степенью, стрелка
+тема: До первого успеха
+опр: Геометрическое распределение -> Это число испытаний до первого успеха.
+пример: P(X = k) = [$q^{k−1}$]{сначала k − 1 неудач} · [p]{затем успех}
+стрелка: Ожидание: E(X) = 1/p. Кубик до «шестёрки» — в среднем 6 бросков.`},
+/* ======================= ВиС 11 ======================= */
+{g:'ВиС 11',t:'Нормальное распределение',s:
+`# проверяет: шеренга интервалов, рисунок, стрелка
+тема: Правило трёх сигм
+класс: 11
+связка: a ± σ | a ± 2σ | a ± 3σ
+Доля значений -> ≈ 68% | ≈ 95% | ≈ 99,7%
+стрелка: Значения дальше 3σ от среднего практически не встречаются
+---
+рисунок: колокол Гаусса с отмеченными интервалами`},
+/* ======================= ВиС 11 · УГЛУБЛ. ======================= */
+{g:'ВиС 11 (углубл.)',t:'Неравенство Чебышёва',s:
+`# проверяет: разбор неравенства, правило без цели, выкладка-пример
+тема: Неравенство Чебышёва
+пример: P(|X − EX| ≥ [ε]{отклонение}) ≤ [$DX$]{дисперсия} / [$ε^2$]{квадрат отклонения}
+правило: Верно для любого распределения с конечной дисперсией.
+пример: DX = 4, ε = 4
+  = 4 / 16   {оценка сверху}
+  = 0,25`},
+{g:'ВиС 11 (углубл.)',t:'Корреляция',s:
+`# проверяет: шеренга знаков, контрпример
+тема: Коэффициент корреляции
+связка: r ≈ 1 | r ≈ 0 | r ≈ −1
+Связь -> прямая линейная | линейной нет | обратная линейная
+Пример -> рост и вес | рост и оценка | цена и спрос
+---
+контрпример: Корреляция — не причинность: мороженое и солнечные ожоги связаны через жару`},
+{g:'ВиС 11 (углубл.)',t:'Центральная предельная теорема',s:
+`# проверяет: гном, теорема с длинной формулировкой, черта, выноска
+схема: гном
+класс: 11
+теорема: центральная предельная -> Сумма большого числа независимых одинаково распределённых величин распределена почти нормально.
+  | Поэтому рост, ошибки измерений и баллы ЕГЭ похожи на «колокол».
+  выноска: Бросьте 30 кубиков и сложите — получите колокол`},
+/* ======================= ИНФОРМАТИКА 8 · УГЛУБЛ. ======================= */
+{g:'Информатика 8 (углубл.)',t:'Двоичное сложение',s:
+`# проверяет: шеренга-таблица сложения, выкладка с переносом
+тема: Сложение в двоичной системе
+связка: 0 + 0 | 0 + 1 | 1 + 0 | 1 + 1
+Сумма -> 0 | 1 | 1 | 10
+---
+пример: $1011_2 + 110_2$
+  = $10001_2$   {перенос единиц в три старших разряда}
+  = $17_{10}$   {проверка: 11 + 6}`},
+{g:'Информатика 8 (углубл.)',t:'Приоритет логических операций',s:
+`# проверяет: лестница со связкой, код в пунктах, привязанный пример
+тема: Порядок вычисления логического выражения
+связка: Сначала выполняется:
+1. Скобки.
+2. Отрицание \`not\`.
+3. Конъюнкция \`and\`.
+4. Дизъюнкция \`or\`.
+  пример: \`not A or B and C\` = \`(not A) or (B and C)\``},
+{g:'Информатика 8 (углубл.)',t:'Вложенные циклы',s:
+`# проверяет: разбор кода, правило → цель, код в зоне
+тема: Вложенный цикл: таблица умножения
+правило → внутренний: Внутренний цикл проходит полностью на каждом шаге внешнего.
+пример: [\`for i in range(1, 10):\`]{внешний} [\`for j in range(1, 10):\`]{внутренний}
+---
+\`for i in range(1, 10):
+\`    for j in range(1, 10):
+\`        print(i * j, end=' ')
+\`    print()`},
+/* ======================= ИНФОРМАТИКА 9 ======================= */
+{g:'Информатика 9',t:'Виды моделей',s:
+`# проверяет: дерево с примерами
+схема: дерево
+тема: Модели по форме представления
+Материальные
+  - глобус
+  - макет здания
+Информационные
+  - словесные
+  - графические
+  - математические
+  - компьютерные`},
+/* ======================= ИНФОРМАТИКА 9 · УГЛУБЛ. ======================= */
+{g:'Информатика 9 (углубл.)',t:'Двумерный массив',s:
+`# проверяет: разбор с индексами в коде, правило → цель, контрпример
+тема: Обращение к элементу матрицы
+правило → строка: Сначала номер строки, потом номер столбца.
+пример: [\`a\`]{матрица}[\`[i]\`]{строка}[\`[j]\`]{столбец}
+контрпример: \`a = [[0] * m] * n\` — все строки окажутся одним и тем же списком`},
+{g:'Информатика 9 (углубл.)',t:'Сложность алгоритма',s:
+`# проверяет: шеренга с формулами и кодом
+тема: Как растёт время работы
+связка: O(1) | O(log n) | O(n) | O(n²)
+Пример -> \`a[i]\` | двоичный поиск | сумма списка | пузырёк
+n = 1000 -> 1 | ≈ 10 | 1000 | 1 000 000`},
+{g:'Информатика 9 (углубл.)',t:'Методы строк',s:
+`# проверяет: батарея: указатель — код, выноски
+тема: Методы строк Python
+класс: 9
+\`s.split()\` -> Разбить строку на список слов.
+  выноска: 'a b c' → ['a', 'b', 'c']
+\`s.replace(a, b)\` -> Заменить все a на b.
+\`s.find(x)\` -> Индекс первого вхождения или −1.
+\`s.upper()\` -> Все буквы заглавные.`},
+/* ======================= ИНФОРМАТИКА 11 ======================= */
+{g:'Информатика 11',t:'Реляционная база данных',s:
+`# проверяет: гном, опр с разбором, батарея
+схема: гном
+класс: 11
+опр: Запись -> Это строка таблицы: данные об одном объекте.
+опр: Поле -> Это столбец таблицы: одно свойство всех объектов.
+опр: Первичный ключ -> Это поле, значение которого не повторяется.
+  пример: номер паспорта, ИНН, id`},
+{g:'Информатика 11',t:'Компьютерные сети',s:
+`# проверяет: шеренга с вопросами
+тема: Виды компьютерных сетей
+связка: Локальная | Городская | Глобальная
+Охват -> здание | город | весь мир
+Пример -> сеть школы | сеть провайдера | интернет`},
+{g:'Информатика 11',t:'Информационная безопасность',s:
+`# проверяет: очная ставка «угроза — защита» в несколько этажей
+тема: Угрозы и защита
+связка: Угроза | Защита
+Вирусы >< Антивирус, обновления
+Подбор пароля >< Длинный пароль, двухфакторный вход
+Фишинг >< Проверять адрес сайта и отправителя`},
+/* ======================= ФИЗИКА 8 ======================= */
+{g:'Физика 8',t:'Количество теплоты',s:
+`# проверяет: разбор формулы, выкладка с единицами
+тема: Нагревание тела
+пример: Q = [c]{удельная теплоёмкость} · [m]{масса} · [$(t_2 − t_1)$]{изменение температуры}
+пример: Нагреть 2 кг воды от 20 °C до 100 °C
+  = 4200 · 2 · 80   {c воды = 4200 Дж/(кг · °C)}
+  = 672 000 Дж`},
+{g:'Физика 8',t:'Закон Ома для участка цепи',s:
+`# проверяет: закон в гноме, рамочная формула, выноска-мнемоника
+схема: гном
+класс: 8
+закон: Ома -> Сила тока прямо пропорциональна напряжению и обратно пропорциональна сопротивлению.
+  $$I = \\frac UR$$
+  выноска: Закройте пальцем нужную букву в треугольнике U над I·R`},
+{g:'Физика 8',t:'Виды теплопередачи',s:
+`# проверяет: шеренга в три столбца, вопросы-признаки
+тема: Виды теплопередачи
+связка: Теплопроводность | Конвекция | Излучение
+Переносится вещество? -> нет | да | нет
+Нужна среда? -> да | да (жидкость или газ) | нет
+Пример -> ложка в чае | батарея греет комнату | Солнце греет Землю`},
+/* ======================= ФИЗИКА 8 · УГЛУБЛ. ======================= */
+{g:'Физика 8 (углубл.)',t:'Уравнение теплового баланса',s:
+`# проверяет: выкладка-решение, ⇒, обоснования
+тема: Смешали 1 кг воды при 80 °C и 3 кг при 20 °C
+пример: $Q_{отд} = Q_{пол}$
+  => $c·1·(80 − t) = c·3·(t − 20)$   {c сокращается}
+  => 80 − t = 3t − 60
+  => t = 35 °C`},
+{g:'Физика 8 (углубл.)',t:'Смешанное соединение',s:
+`# проверяет: лестница со связкой, привязанный пример
+тема: Как найти общее сопротивление
+связка: Для смешанного соединения:
+1. Найти участки, где резисторы соединены только последовательно или только параллельно.
+2. Заменить каждый такой участок одним резистором.
+3. Повторять, пока не останется один резистор.
+  пример: 2 Ом и 2 Ом параллельно = 1 Ом; плюс 3 Ом последовательно = 4 Ом`},
+{g:'Физика 8 (углубл.)',t:'Построение изображения в линзе',s:
+`# проверяет: батарея «луч → как идёт после линзы», рисунок
+тема: Три удобных луча для собирающей линзы
+класс: 8
+Параллельно оси -> После линзы проходит через фокус.
+Через центр линзы -> Не преломляется.
+Через фокус -> После линзы идёт параллельно оси.
+  рисунок: линза, предмет за двойным фокусом`},
+/* ======================= ФИЗИКА 9 · УГЛУБЛ. ======================= */
+{g:'Физика 9 (углубл.)',t:'Движение по окружности',s:
+`# проверяет: разбор формул, правило → цель, рисунок
+тема: Центростремительное ускорение
+правило → к центру: Ускорение направлено к центру, даже если скорость по модулю постоянна.
+пример: a = [$v^2$]{к центру} / [R]{радиус} = $ω^2 R$
+рисунок: вектор скорости по касательной, ускорение к центру`},
+{g:'Физика 9 (углубл.)',t:'Закон всемирного тяготения',s:
+`# проверяет: закон с разбором, следствие, выкладка
+тема: Закон всемирного тяготения
+закон: Тела притягиваются с силой, пропорциональной массам и обратно пропорциональной квадрату расстояния.
+пример: F = [G]{гравитационная постоянная} · [$m_1 m_2$]{массы} / [$r^2$]{квадрат расстояния}
+следствие: Ускорение свободного падения на высоте h: $g_h = g · R^2 / (R + h)^2$`},
+{g:'Физика 9 (углубл.)',t:'Механические волны',s:
+`# проверяет: очная ставка со связкой, разбор формулы в зоне
+тема: Виды волн
+связка: Продольные | Поперечные
+Колебания вдоль направления волны >< Колебания поперёк направления волны
+Звук в воздухе >< Волна на струне
+---
+пример: [λ]{длина волны} = [v]{скорость} · [T]{период}`},
+/* ======================= ФИЗИКА 10 · УГЛУБЛ. ======================= */
+{g:'Физика 10 (углубл.)',t:'Динамика в проекциях',s:
+`# проверяет: лестница-алгоритм, привязанный пример с формулой
+тема: Как решать задачу динамики
+1. Сделать рисунок, показать все силы.
+2. Выбрать оси: одну — вдоль ускорения.
+3. Записать второй закон Ньютона в векторном виде.
+4. Спроецировать на оси.
+5. Решить систему уравнений.
+  пример: Брусок на наклонной: $ma = mg \\sin α − μ mg \\cos α$`},
+{g:'Физика 10 (углубл.)',t:'Первое начало термодинамики',s:
+`# проверяет: закон с разбором, шеренга процессов в зоне
+тема: Первое начало термодинамики
+пример: Q = [ΔU]{изменение внутренней энергии} + [A]{работа газа}
+---
+тема: Первое начало в изопроцессах
+связка: Изохорный | Изобарный | Изотермический
+Работа газа -> A = 0 | A = pΔV | A = Q
+Теплота -> Q = ΔU | Q = ΔU + A | ΔU = 0`},
+{g:'Физика 10 (углубл.)',t:'Закон Кулона',s:
+`# проверяет: гном, закон, формула, контрпример
+схема: гном
+класс: 10
+закон: Кулона -> Сила взаимодействия точечных зарядов пропорциональна произведению зарядов и обратно пропорциональна квадрату расстояния.
+  $$F = k\\frac{|q_1||q_2|}{εr^2}$$
+  контрпример: Для заряженных шаров рядом закон неточен: заряды не точечные`},
+/* ======================= ФИЗИКА 11 ======================= */
+{g:'Физика 11',t:'Закон электромагнитной индукции',s:
+`# проверяет: разбор формулы с дробью, правило → цель
+тема: Закон Фарадея
+правило → минус: Минус — это правило Ленца: ток противодействует изменению потока.
+пример: ε = [−]{минус} [ΔΦ]{изменение магнитного потока} / [Δt]{время}
+пример: Поток изменился на 0,2 Вб за 0,1 с: ε = 2 В`},
+{g:'v6: типографика',t:'Точки в конце (подсказки)',s:
+`# проверяет: подсказки о точке — предложение без точки; точка в заголовке и в ячейке
+тема: Проверка точек.
+свойство: первое -> Сумма углов треугольника равна 180°
+свойство: второе -> Это верно для любого треугольника.`},
+{g:'v6: типографика',t:'Неразрывные связки',s:
+`# проверяет: предлог не висит в конце строки, тире не начинает строку, число не отрывается от единицы
+тема: Висячие предлоги и тире
+- Тело массой 2 кг и объёмом 0,5 л движется со скоростью 20 м/с в направлении к северу — так записано в условии задачи
+- 1 000 000 Дж — это 1 МДж, а 3 600 000 Дж — это 1 кВт·ч`}
+);
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const SUBJ=['Математика','Алгебра','Геометрия','ВиС','Информатика','Физика'];
+EXAMPLES.forEach((e,i)=>{e.i=i;const m=e.g.match(/^(Математика|Алгебра|Геометрия|ВиС|Информатика|Физика) (\d+)( \(углубл\.\))?$/);
+  if(m){e.subj=m[1];e.grade=+m[2];e.lvl=m[3]?'углубл.':'база';e.gl=`${m[1]} ${m[2]} · ${e.lvl}`;}else{e.subj=e.g;e.grade=0;e.lvl='';e.gl=e.g;}});
+const ORDER=e=>{const k=SUBJ.indexOf(e.subj);return [k<0?99:k,e.grade,e.lvl==='углубл.'?1:0,e.i];};
+const SORTED=[...EXAMPLES].sort((a,b)=>{const x=ORDER(a),y=ORDER(b);for(let q=0;q<4;q++)if(x[q]!==y[q])return x[q]-y[q];return 0;});
+const sel=$('ex');
+{const subs=[...new Set(SORTED.map(e=>e.subj))];$('fs').innerHTML='<option value="">все</option>'+subs.map(x=>`<option>${esc(x)}</option>`).join('');
+ const gr=[...new Set(SORTED.filter(e=>e.grade).map(e=>e.grade))].sort((a,b)=>a-b);$('fg').innerHTML='<option value="">все</option>'+gr.map(x=>`<option>${x}</option>`).join('');}
+const pass=e=>(!$('fs').value||e.subj===$('fs').value)&&(!$('fg').value||e.grade==+$('fg').value)&&(!$('fl').value||e.lvl===$('fl').value);
+function fillSel(){sel.innerHTML='';let og=null,last='';const list=SORTED.filter(pass);
+  list.forEach(e=>{if(e.gl!==last){og=document.createElement('optgroup');og.label=e.gl;sel.appendChild(og);last=e.gl;}
+    const o=document.createElement('option');o.value=e.i;o.textContent=e.t;og.appendChild(o);});
+  $('cnt').textContent=list.length+' из '+EXAMPLES.length;return list;}
+let svgText='';
+const svgOf=(r,W,cls)=>`<svg xmlns="http://www.w3.org/2000/svg" class="${cls||''}" width="${W}" height="${Math.ceil(r.h)}" viewBox="0 0 ${W} ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`;
+const warnHtml=w=>w&&w.length?w.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="ok">Замечаний нет</div>';
+function one(src,W,strict,cls){const r=render(src,W,{bw:$('bw').checked,strict});return{r,svg:svgOf(r,W,cls)};}
+function update(){
+  const W=+$('w').value;const va=$('va').value;const cls=($('sc').checked?'selfcheck ':'')+($('bl').checked?'blind':'');
+  try{if(va==='AB'){const a=one($('src').value,W,false,cls),b=one($('src').value,W,true,cls);svgText=b.svg;
+      $('pic').innerHTML=`<div class="ab"><div><div class="tag">А</div>${a.svg}</div><div><div class="tag">Б</div>${b.svg}</div></div>`;$('meta').textContent='Схема: '+a.r.scheme;$('warn').innerHTML=warnHtml(a.r.warns);}
+    else{const a=one($('src').value,W,va==='B',cls);svgText=a.svg;$('pic').innerHTML=svgText;$('meta').textContent='Схема: '+a.r.scheme+' · вариант '+(va==='B'?'Б':'А');$('warn').innerHTML=warnHtml(a.r.warns);}}
+  catch(e){$('pic').innerHTML='<pre>'+esc(e.stack)+'</pre>';$('meta').textContent='ОШИБКА';}
+}
+sel.onchange=()=>{$('src').value=EXAMPLES[sel.value].s;update();};
+['src','w','sc','bl','bw','va'].forEach(id=>$(id).addEventListener('input',()=>{update();if($('gallery').style.display==='block')gallery();}));
+['fs','fg','fl'].forEach(id=>$(id).addEventListener('input',()=>{const l=fillSel();if(l.length){sel.value=l[0].i;$('src').value=l[0].s;update();}if($('gallery').style.display==='block')gallery();}));
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml'}));a.download='konspekt.svg';a.click();};
+function gallery(){const va=$('va').value;const W=va==='AB'?Math.min(+$('w').value,560):+$('w').value;let h='',g='';
+  SORTED.filter(pass).forEach(e=>{const i=e.i;if(e.gl!==g){h+=`<h2>${esc(e.gl)}</h2>`;g=e.gl;}let body;
+    try{if(va==='AB'){const a=one(e.s,W,false),b=one(e.s,W,true);
+        body=`<div class="card"><div class="meta">Схема: ${esc(a.r.scheme)}</div><div class="ab"><div><div class="tag">А</div>${a.svg}</div><div><div class="tag">Б</div>${b.svg}</div></div><div class="warn">${warnHtml(a.r.warns)}</div></div>`;}
+      else{const a=one(e.s,W,va==='B');body=`<div class="card"><div class="meta">Схема: ${esc(a.r.scheme)}</div>${a.svg}<div class="warn">${warnHtml(a.r.warns)}</div></div>`;}}
+    catch(err){body=`<div class="card"><pre>${esc(err.stack)}</pre></div>`;}
+    h+=`<div class="gi${va==='AB'?' wide':''}" id="g${i}"><h3>${esc(e.t)}</h3><pre>${esc(e.s)}</pre>${body}</div>`;});
+  $('gallery').innerHTML=h;}
+$('gal').onclick=()=>{const on=$('gallery').style.display!=='block';$('gallery').style.display=on?'block':'none';$('editor').style.display=on?'none':'grid';$('gal').classList.toggle('on',on);$('gal').textContent=on?'Вернуться к редактору':'Галерея всех примеров';if(on)gallery();};
+{const l=fillSel();sel.value=l[0].i;$('src').value=l[0].s;update();}
+window.__test=(i,W,bw,strict)=>{const r=render(EXAMPLES[i].s,W||680,{bw,strict});return{t:EXAMPLES[i].g+' / '+EXAMPLES[i].t,scheme:r.scheme,warns:r.warns,svg:svgOf(r,W||680)};};
+window.__n=EXAMPLES.length;
+</script>
+</body>
+</html>
