@@ -1,12 +1,12 @@
 // ДРАКОН-ГРАФ — отрисовка всех конспектов на странице (ТЗ библиотеки, раздел 4; этап 4).
-//   <pre><code class="language-конспект">…</code></pre>  или  class="language-konspekt"
+//   <pre><code class="language-конспект">…</code></pre>  или  class="language-drakon-graf"
 //   <script>drakonGraf.run();</script>
 // Каждый блок заменяется на <figure class="drakon-graf"> с SVG; подсказки — в <figcaption> (hints: true)
 // или только в консоли (по умолчанию).
 import { render } from './api.js';
 import { ready, mathjaxConfig } from './mathjax.js';
 
-const SEL = ['конспект', 'konspekt', 'drakon-graf'].map(n => `code.language-${n}, pre.language-${n}`).join(', '); // три имени блока
+const SEL = ['конспект', 'drakon-graf'].map(n => `code.language-${n}, pre.language-${n}`).join(', '); // два имени блока: русское и английское
 
 /** Ждёт MathJax (если подключён) и рисует все блоки. Возвращает число нарисованных конспектов. */
 export async function run(opts = {}) {

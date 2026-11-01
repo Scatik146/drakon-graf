@@ -5,7 +5,7 @@
 //   md.render('```конспект\nтема: …\n```');     // блок становится <figure class="drakon-graf"><svg…></figure>
 import { render } from './api.js';
 
-const LANG = /^(конспект|konspekt|drakon-graf)(?=\s|$)/; // русское имя блока, латиницей и английское
+const LANG = /^(конспект|drakon-graf)(?=\s|$)/; // русское и английское имя блока
 export default function drakonGrafPlugin(md, opts = {}) {
   const fence = md.renderer.rules.fence || ((t, i, o, e, self) => self.renderToken(t, i, o));
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {

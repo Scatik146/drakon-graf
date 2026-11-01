@@ -35,7 +35,7 @@ await ready();
 function blocks(md) {
   const out = []; const L = md.split(/\r?\n/); let cur = null, fence = '';
   L.forEach((l, i) => {
-    if (!cur) { const m = l.match(/^(\s*)(`{3,}|~{3,})\s*(конспект|konspekt|drakon-graf)(?=\s|$)/); if (m) { cur = { line: i + 2, text: [] }; fence = m[2]; } }
+    if (!cur) { const m = l.match(/^(\s*)(`{3,}|~{3,})\s*(конспект|drakon-graf)(?=\s|$)/); if (m) { cur = { line: i + 2, text: [] }; fence = m[2]; } }
     else if (l.trim().startsWith(fence[0].repeat(fence.length)) && !l.trim().replace(fence[0], '').match(/[^`~]/)) { out.push({ line: cur.line, text: cur.text.join('\n') }); cur = null; }
     else cur.text.push(l);
   });

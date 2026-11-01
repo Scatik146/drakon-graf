@@ -1,6 +1,6 @@
 // Русские и английские команды равноправны (формальное описание, таблица 2.1).
 // Все 249 примеров эталона переводятся на английские ключевые слова — рисунок и подсказки должны совпасть до байта.
-// Плюс имена блока в Markdown: ```конспект, ```konspekt, ```drakon-graf.
+// Плюс имена блока в Markdown: ```конспект и ```drakon-graf (```konspekt больше не поддерживается).
 import { readFileSync } from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
 import { fileURLToPath } from 'node:url'; import { createRequire } from 'node:module';
 import { _render, render, ready } from '../../src/index.js';
@@ -43,10 +43,11 @@ ok(diff.length === 0, `английские команды: ${changed} стро�
 // Markdown: три имени блока
 let md; try { md = require('markdown-it')(); } catch { md = require('/opt/npm-tools/node_modules/markdown-it')(); }
 md.use((await import('../../src/markdown-it.js')).default);
-for (const name of ['конспект', 'konspekt', 'drakon-graf']) {
+for (const name of ['конспект', 'drakon-graf']) {
   const html = md.render('```' + name + '\ntopic: Fractions\nДробь -> Это часть целого.\n```\n');
   ok(/<figure class="drakon-graf"[^>]*><svg/.test(html), `markdown-it: блок \`\`\`${name}`);
 }
+ok(!/<figure/.test(md.render('```konspekt\nтема: X\n```\n')), 'markdown-it: ```konspekt — обычный блок кода (имя убрано)');
 const enOnly = render('topic: Квадратное уравнение\ngrade: 8\nrule: Корни $x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}$.\nexample: [$x^2-5x+6=0$]{уравнение}');
 const ruOnly = render('тема: Квадратное уравнение\nкласс: 8\nправило: Корни $x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}$.\nпример: [$x^2-5x+6=0$]{уравнение}');
 ok(enOnly.svg.replace(/dg\d+/g, '') === ruOnly.svg.replace(/dg\d+/g, ''), 'render: конспект на английских командах = на русских, вместе с <title> и <desc>');
