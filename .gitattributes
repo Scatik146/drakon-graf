@@ -1,0 +1,6 @@
+# Концы строк — всегда LF, и на Windows тоже: иначе bin/drakon-graf.mjs не запустится на Linux и Mac
+* text=auto eol=lf
+*.ttf binary
+*.otf binary
+*.png binary
+*.pdf binary
