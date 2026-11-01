@@ -24,7 +24,7 @@ for(const e of all){const f=String(e.i).padStart(3,'0')+'.svg';const h=crypto.cr
     let why;if(old.replace(NUM,'#')===e.svg.replace(NUM,'#')){const x=old.match(NUM),y=e.svg.match(NUM);why='структура та же, наибольший сдвиг '+Math.max(...x.map((v,i)=>Math.abs(v-y[i]))).toFixed(1)+' px';}
     else{const ta=old.match(/>[^<]+</g)||[],tb=e.svg.match(/>[^<]+</g)||[];const i=ta.findIndex((t,j)=>t!==tb[j]);why='структура другая (текстов '+ta.length+' → '+tb.length+')'+(i>=0?': «'+ta[i]+'» → «'+tb[i]+'»':'');}
     diffAt.push(f+': '+why);}}
-if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.3',date:'2026-11-01',fonts:'PT Serif, Asana Math, PT Mono; ширины по таблицам метрик',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
+if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.4',date:'2026-11-01',fonts:'PT Serif, Asana Math, PT Mono; ширины по таблицам метрик; формулы MathJax 4',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
 const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
 console.log('Примеров:',man.length,'| эталон:',old.count);

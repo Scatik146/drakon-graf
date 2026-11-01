@@ -16,6 +16,8 @@ npm test                 # 0 расхождений с эталоном, 0 ге�
 npm run etalon:update    # переснять эталон — только по решению автора
 ```
 
+Формулы набирает MathJax 4 со шрифтом Asana Math (пакеты `mathjax` и `@mathjax/mathjax-asana-font`, ставятся `npm install`); галерея и тесты ждут `drakonGraf.ready()`.
+
 Эталон — закон поведения библиотеки (ТЗ библиотеки, принцип Б2). Прототип, с которого он снят, сохранён в `docs/history/prototypes/v8_engine.js`.
 
-Шрифты (лежат в `fonts/`, лицензия SIL OFL 1.1): **PT Serif** — текст, **PT Mono** — код (ПараТайп), **Asana Math** — математические знаки и греческие буквы. С этапа 2 ширина текста считается по таблицам метрик (`src/text/metrics.js`), поэтому рисунок не зависит от машины. Таблицы собирает `npm run metrics`: ширины и кернинг PT — из файлов шрифтов, ширины знаков Asana Math (и DejaVu Sans для ᵏ ₙ ✗, до этапа 3) — замером в Chromium с набором шрифтов эталона `tests/fonts/fonts.conf`. Сверить таблицы с браузером: `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/check_metrics.mjs`.
+Шрифты (лежат в `fonts/`, лицензия SIL OFL 1.1): **PT Serif** — текст, **PT Mono** — код (ПараТайп), **Asana Math** — математические знаки и греческие буквы. С этапа 2 ширина текста считается по таблицам метрик (`src/text/metrics.js`), поэтому рисунок не зависит от машины. Таблицы собирает `npm run metrics`: ширины и кернинг PT — из файлов шрифтов, ширины знаков Asana Math (и DejaVu Sans для ᵏ ₙ ✗, если их наберут прямо в тексте) — замером в Chromium с набором шрифтов эталона `tests/fonts/fonts.conf`. Сверить таблицы с браузером: `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/check_metrics.mjs`.
