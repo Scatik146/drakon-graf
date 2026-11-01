@@ -31,3 +31,19 @@ jobs:
         with:
           name: diff-node${{ matrix.node }}
           path: graf/tests/diff/
+  package:
+    # Пакет глазами пользователя: npm pack → установка в чистую папку → рисунок с формулой и командная строка
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm pack
+      - name: Установка пакета в чистую папку
+        run: |
+          mkdir -p /tmp/user && cd /tmp/user && npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/drakon-graf-*.tgz
+          du -sh node_modules/drakon-graf node_modules/mathjax node_modules/@mathjax/* || true
+      - run: node tools/smoke.mjs /tmp/user

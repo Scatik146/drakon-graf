@@ -1,0 +1,38 @@
+name: Выпуск в npm
+# Публикация без токенов: npm доверяет этому сценарию (Trusted Publishing, OIDC).
+# Запуск: GitHub → Releases → Draft a new release → тег vX.Y.Z → Publish release.
+# Или вручную: Actions → «Выпуск в npm» → Run workflow.
+# Перед первым запуском пакет должен уже существовать в npm (первая публикация — вручную),
+# а в его настройках на npmjs.com указан этот сценарий (Trusted Publisher: Scatik146 / drakon-graf / publish.yml).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  id-token: write   # для доверенной публикации и подписи происхождения (provenance)
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: npm не ниже 11.5 (нужен для Trusted Publishing)
+        run: npm install -g npm@latest && npm --version
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - name: Все проверки перед выпуском
+        env:
+          FONTCONFIG_FILE: ${{ github.workspace }}/graf/tests/fonts/fonts.conf
+        run: npm test
+      - name: Версия тега совпадает с package.json
+        if: github.event_name == 'release'
+        run: |
+          v=$(node -p "require('./package.json').version")
+          test "${GITHUB_REF_NAME#v}" = "$v" || { echo "Тег $GITHUB_REF_NAME, а в package.json $v"; exit 1; }
+      - name: Публикация
+        run: npm publish --access public

@@ -1,7 +1,6 @@
 {
   "name": "drakon-graf",
-  "version": "0.9.0-dev",
-  "private": true,
+  "version": "0.9.0",
   "description": "ДРАКОН-ГРАФ — расширенная версия языка ГРАФ В. Д. Паронджанова: текстовое описание → графический конспект (SVG)",
   "license": "Apache-2.0",
   "author": "Сергей Николаевич Веснин",
@@ -18,32 +17,57 @@
     "образование",
     "svg"
   ],
+  "homepage": "https://github.com/Scatik146/drakon-graf#readme",
+  "bugs": {
+    "url": "https://github.com/Scatik146/drakon-graf/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Scatik146/drakon-graf.git"
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./markdown-it": "./src/markdown-it.js",
+    "./dist/*": "./dist/*",
+    "./fonts/*": "./fonts/*",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "drakon-graf": "bin/drakon-graf.mjs"
+  },
+  "files": [
+    "src/",
+    "dist/",
+    "bin/",
+    "fonts/",
+    "index.d.ts",
+    "NOTICE",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "metrics": "FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/build_metrics.mjs",
     "bundle": "node tools/bundle.mjs",
     "build": "node tools/bundle.mjs && python3 graf/build.py",
     "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs",
-    "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update"
-  },
-  "devDependencies": {
-    "esbuild": "0.28.2",
-    "playwright": "1.63.0",
-    "markdown-it": "14.2.0"
+    "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update",
+    "prepack": "node tools/prepack.mjs"
   },
   "dependencies": {
     "mathjax": "4.1.3",
     "@mathjax/mathjax-asana-font": "4.1.3"
   },
-  "bin": {
-    "drakon-graf": "bin/drakon-graf.mjs"
-  },
-  "exports": {
-    ".": "./src/index.js",
-    "./markdown-it": "./src/markdown-it.js",
-    "./dist/*": "./dist/*"
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0",
+    "markdown-it": "14.2.0"
   }
 }

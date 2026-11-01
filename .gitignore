@@ -4,3 +4,5 @@ graf/tests/geo_last.json
 .DS_Store
 graf/tests/diff/
 dist/
+/fonts/
+*.tgz

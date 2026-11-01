@@ -51,31 +51,41 @@ npm run build   # собрать галерею graf/konspekt_v8.html
 
 Библиотека строится по [ТЗ 0.9](docs/library/ТЗ_библиотеки_0.9.md): выполнены этапы 1 (модули), 2 (таблицы метрик, рисование в Node без браузера) и 3 (формулы через MathJax 4 со шрифтом Asana Math); 4 (обвязка: `run()`, плагин markdown-it, командная строка, страница примеров `demo/`); следующий — выпуск пакета 0.9.0.
 
-## Как подключить (до выпуска в npm — из репозитория)
+## Как подключить
+
+**На сайт** — три строки, всё с CDN jsDelivr:
 
 ```html
 <pre><code class="language-конспект">тема: Деление с остатком
 правило → остаток: Остаток всегда меньше делителя.
 пример: [17]{делимое} = [5]{делитель} · [3]{неполное частное} + [2]{остаток}</code></pre>
 
-<script src="dist/drakon-graf.js"></script>
-<script>window.MathJax = drakonGraf.mathjaxConfig('node_modules/mathjax', 'node_modules/@mathjax/mathjax-asana-font');</script>
-<script src="node_modules/@mathjax/mathjax-asana-font/tex-mml-svg-mathjax-asana.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/drakon-graf@0.9/dist/drakon-graf.min.js"></script>
+<script>window.MathJax = drakonGraf.mathjaxConfig();</script>
+<script src="https://cdn.jsdelivr.net/npm/@mathjax/mathjax-asana-font@4.1.3/tex-mml-svg-mathjax-asana.js"></script>
 <script>drakonGraf.run({ hints: true });</script>
 ```
 
+MathJax нужен только для формул `$…$`; без него формулы рисуются простым текстом.
+
+**В Node и сборщиках:** `npm install drakon-graf`
+
 ```js
-import { render, ready } from './src/index.js';      // Node
+import { render, ready } from 'drakon-graf';
 await ready();                                        // MathJax для формул
 const { svg, hints } = render(text, { width: 680, class: 7 });
 ```
 
+**Markdown (markdown-it):** `md.use((await import('drakon-graf/markdown-it')).default)` — блок ```` ```конспект ```` становится рисунком.
+
+**Командная строка:**
+
 ```bash
-node bin/drakon-graf.mjs урок.md -o рисунки/          # все блоки «конспект» → SVG
-node bin/drakon-graf.mjs --check урок.md              # только подсказки
+npx drakon-graf урок.md -o рисунки/      # все блоки «конспект» → SVG
+npx drakon-graf --check урок.md          # только подсказки (код выхода 1, если есть «важно»)
 ```
 
-Живой пример — `demo/index.html`.
+Живой пример — [`demo/index.html`](demo/index.html). Типы для TypeScript — `index.d.ts`.
 
 ## Лицензия
 

@@ -10,7 +10,7 @@ import { S, freshState } from './state.js';
 import { plain } from './text/math.js';
 import { METRICS } from './text/metrics.js';
 
-export const version = '0.9.0-dev';
+export const version = '0.9.0';
 
 // ── Подсказки: код и уровень по каталогу (формальное описание, таблица 9.1) ─────────────────
 // Уровень «важно» — синтаксис, ссылки, обязательные части; «совет» — мягкие пределы и стиль.

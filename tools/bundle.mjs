@@ -7,4 +7,5 @@ try { esbuild = require('esbuild'); } catch { esbuild = require('/opt/npm-tools/
 const common = { entryPoints: ['src/index.js'], bundle: true, external: ['mathjax'], charset: 'utf8', legalComments: 'none', logLevel: 'warning', target: 'es2020' };
 await esbuild.build({ ...common, format: 'iife', globalName: 'drakonGraf', outfile: 'dist/drakon-graf.js' });
 await esbuild.build({ ...common, format: 'esm', outfile: 'dist/drakon-graf.mjs' });
-console.log('dist/drakon-graf.js, dist/drakon-graf.mjs');
+await esbuild.build({ ...common, format: 'iife', globalName: 'drakonGraf', minify: true, outfile: 'dist/drakon-graf.min.js' }); // для <script> с CDN
+console.log('dist/drakon-graf.js, dist/drakon-graf.min.js, dist/drakon-graf.mjs');
