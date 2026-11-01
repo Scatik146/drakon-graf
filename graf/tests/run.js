@@ -22,7 +22,9 @@ for(const e of all){const f=String(e.i).padStart(3,'0')+'.svg';const h=crypto.cr
   const old=fs.readFileSync(fp,'utf8');if(old!==e.svg&&close(old,e.svg)){near.push(f);}else if(old!==e.svg){diff.push(f+' '+e.g+' / '+e.t);
     // расхождение: сохранить рисунок и показать первое отличие
     const DD=path.join(__dirname,'diff');fs.mkdirSync(DD,{recursive:true});fs.writeFileSync(path.join(DD,f),e.svg);
-    let k=0;while(k<old.length&&old[k]===e.svg[k])k++;diffAt.push(f+': эталон «'+old.slice(Math.max(0,k-60),k+60)+'»\n      сейчас «'+e.svg.slice(Math.max(0,k-60),k+60)+'»');}}
+    let why;if(old.replace(NUM,'#')===e.svg.replace(NUM,'#')){const x=old.match(NUM),y=e.svg.match(NUM);why='структура та же, наибольший сдвиг '+Math.max(...x.map((v,i)=>Math.abs(v-y[i]))).toFixed(1)+' px';}
+    else{const ta=old.match(/>[^<]+</g)||[],tb=e.svg.match(/>[^<]+</g)||[];const i=ta.findIndex((t,j)=>t!==tb[j]);why='структура другая (текстов '+ta.length+' → '+tb.length+')'+(i>=0?': «'+ta[i]+'» → «'+tb[i]+'»':'');}
+    diffAt.push(f+': '+why);}}
 if(upd){fs.writeFileSync(path.join(ET,'manifest.json'),JSON.stringify({version:'v8.1',date:'2026-11-01',fonts:'PT Sans +1 px, PT Mono',count:man.length,examples:man},null,1));console.log('Эталон переснят:',man.length,'примеров');return;}
 const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
