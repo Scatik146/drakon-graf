@@ -1,26 +1,27 @@
-name: Загрузка пакетов MathJax (служебная ветка)
+name: Проверка выпущенного пакета (служебная ветка)
 on:
   push:
     branches: [deps-fetch]
-permissions:
-  contents: write
 jobs:
-  fetch:
-    if: "!contains(github.event.head_commit.message, '[deps]')"
+  check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: |
-          mkdir -p vendor && cd vendor
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund mathjax@4.1.3 @mathjax/mathjax-asana-font@4.1.3
-          du -sh node_modules/* node_modules/@mathjax/*
-      - run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add -f vendor/node_modules vendor/package.json
-          git commit -q -m "[deps] mathjax 4.1.3 + asana font"
-          git push
+      - name: Сведения из npm
+        run: npm view drakon-graf name version dist-tags maintainers dist.tarball dist.integrity
+      - name: Установка из npm в чистую папку, как у пользователя
+        run: |
+          mkdir -p /tmp/user && cd /tmp/user && npm init -y >/dev/null
+          npm install drakon-graf@0.9.0
+          npm audit --omit=dev || true
+      - run: node smoke.mjs /tmp/user
+      - name: CDN jsDelivr (файлы, на которые ссылается README)
+        run: |
+          for u in https://cdn.jsdelivr.net/npm/drakon-graf@0.9/dist/drakon-graf.min.js \
+                   https://cdn.jsdelivr.net/npm/drakon-graf@0.9.0/fonts/PT_Serif-Web-Regular.ttf \
+                   https://cdn.jsdelivr.net/npm/@mathjax/mathjax-asana-font@4.1.3/tex-mml-svg-mathjax-asana.js; do
+            echo "$(curl -sSL -o /dev/null -w '%{http_code} %{size_download}' "$u")  $u"
+          done
