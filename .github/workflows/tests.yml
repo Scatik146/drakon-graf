@@ -21,9 +21,6 @@ jobs:
         env:
           FONTCONFIG_FILE: ${{ github.workspace }}/graf/tests/fonts/fonts.conf
         run: |
-          for c in 21d2 22a5 2220 2208 2099 207b; do printf '%s ' $c; fc-match "Arial:charset=$c" family file; done
-          fc-match Arial; fc-match Consolas
-          node graf/tests/fontprobe.js
           npm test
       - name: Рисунки, отличающиеся от эталона
         if: failure()

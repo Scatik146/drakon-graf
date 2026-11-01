@@ -43,7 +43,7 @@ npm test        # сверка с эталоном, геометрия, типо
 npm run build   # собрать галерею graf/konspekt_v8.html
 ```
 
-Эталон снят в Chromium под Linux со шрифтами Liberation Sans, DejaVu Sans и Inter (`fonts-liberation fonts-dejavu-core fonts-inter`). Чтобы сверка совпала до пикселя, запускайте тесты с `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf`, как это делает автопроверка GitHub. Геометрическая и типографская проверки от шрифтов не зависят.
+Эталон снят в Chromium под Linux со шрифтами Liberation Sans, DejaVu Sans и Inter (`fonts-liberation fonts-dejavu-core fonts-inter`). Сверка допускает сдвиг координат до 1 px; чтобы совпало до байта, запускайте тесты с `FONTCONFIG_FILE=graf/tests/fonts/fonts.conf`, как это делает автопроверка GitHub. Геометрическая и типографская проверки от шрифтов не зависят.
 
 Следующий шаг — JavaScript-библиотека по образцу KaTeX и mermaid: текст на входе, SVG и модель с позициями строк на выходе.
 

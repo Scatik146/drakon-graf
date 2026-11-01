@@ -7,12 +7,17 @@ const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=pr
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
   svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="Arial, Helvetica, sans-serif">${r.svg}</svg>`};}));
 await b.close();
-const man=[];let diff=[],miss=[],diffAt=[];
+// Допуск: запасные шрифты (⇒ ⊥ ∠ ∈) на разных машинах дают ширину с точностью до долей пикселя.
+// Рисунок совпадает, если весь текст и все фигуры те же, а каждое число отличается не больше чем на TOL px.
+const TOL=1.0;const NUM=/-?\d+(?:\.\d+)?/g;
+const close=(a,b)=>{if(a.replace(NUM,'#')!==b.replace(NUM,'#'))return false;const x=a.match(NUM)||[],y=b.match(NUM)||[];
+  return x.length===y.length&&x.every((v,i)=>Math.abs(v-y[i])<=TOL);};
+const man=[];let diff=[],miss=[],diffAt=[],near=[];
 for(const e of all){const f=String(e.i).padStart(3,'0')+'.svg';const h=crypto.createHash('sha1').update(e.svg).digest('hex').slice(0,12);
   man.push({file:f,group:e.g,title:e.t,scheme:e.scheme,warns:e.warns,sha:h});
   if(upd){fs.writeFileSync(path.join(ET,f),e.svg);continue;}
   const fp=path.join(ET,f);if(!fs.existsSync(fp)){miss.push(f+' '+e.t);continue;}
-  const old=fs.readFileSync(fp,'utf8');if(old!==e.svg){diff.push(f+' '+e.g+' / '+e.t);
+  const old=fs.readFileSync(fp,'utf8');if(old!==e.svg&&close(old,e.svg)){near.push(f);}else if(old!==e.svg){diff.push(f+' '+e.g+' / '+e.t);
     // расхождение: сохранить рисунок и показать первое отличие
     const DD=path.join(__dirname,'diff');fs.mkdirSync(DD,{recursive:true});fs.writeFileSync(path.join(DD,f),e.svg);
     let k=0;while(k<old.length&&old[k]===e.svg[k])k++;diffAt.push(f+': эталон «'+old.slice(Math.max(0,k-60),k+60)+'»\n      сейчас «'+e.svg.slice(Math.max(0,k-60),k+60)+'»');}}
@@ -21,6 +26,7 @@ const old=JSON.parse(fs.readFileSync(path.join(ET,'manifest.json'),'utf8'));
 const wdiff=man.filter(m=>{const o=old.examples.find(q=>q.file===m.file);return o&&JSON.stringify(o.warns)!==JSON.stringify(m.warns);}).map(m=>m.file+' '+m.title);
 console.log('Примеров:',man.length,'| эталон:',old.count);
 console.log('Рисунок отличается от эталона:',diff.length);diff.forEach(x=>console.log('  ',x));diffAt.slice(0,5).forEach(x=>console.log('   ≠',x));
+if(near.length)console.log('Сдвиг меньше '+TOL+' px (шрифты машины, допустимо):',near.length,near.join(' '));
 console.log('Подсказки отличаются от эталона:',wdiff.length);wdiff.forEach(x=>console.log('  ',x));
 if(miss.length){console.log('Нет в эталоне:',miss.length);miss.forEach(x=>console.log('  ',x));}
 console.log('\n— Геометрия —');console.log(execSync('node '+JSON.stringify(path.join(__dirname,'geo.js'))+' '+JSON.stringify(path.join(__dirname,'geo_last.json'))).toString().split('\n').slice(0,12).join('\n'));
