@@ -60,6 +60,8 @@
 </main>
 <div id="gallery"></div>
 <script>/*ENGINE*/</script>
+<script>window.MathJax=drakonGraf.mathjaxConfig('../node_modules/mathjax','../node_modules/@mathjax/mathjax-asana-font');</script>
+<script src="../node_modules/@mathjax/mathjax-asana-font/tex-mml-svg-mathjax-asana.js"></script>
 <script>var render=drakonGraf.render;const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');</script>
 <script>/*EXAMPLES*/</script>
 <script>
@@ -104,6 +106,8 @@ $('gal').onclick=()=>{const on=$('gallery').style.display!=='block';$('gallery')
 {const l=fillSel();sel.value=l[0].i;$('src').value=l[0].s;update();}
 window.__test=(i,W,bw,strict)=>{const r=render(EXAMPLES[i].s,W||680,{bw,strict});return{t:EXAMPLES[i].g+' / '+EXAMPLES[i].t,scheme:r.scheme,warns:r.warns,svg:svgOf(r,W||680)};};
 window.__n=EXAMPLES.length;
+// формулы (этап 3): когда MathJax готов — перерисовать
+window.__ready=drakonGraf.ready().then(()=>{update();if($('gallery').style.display==='block')gallery();});
 </script>
 </body>
 </html>

@@ -4,6 +4,7 @@
 const {chromium}=require('playwright');const fs=require('fs'),path=require('path'),crypto=require('crypto');const {execSync}=require('child_process');
 const ROOT=path.resolve(__dirname,'..'),ET=path.join(ROOT,'etalon');const upd=process.argv.includes('--update');
 (async()=>{const b=await chromium.launch();const p=await b.newPage();await p.goto('file://'+path.join(ROOT,'konspekt_v8.html'));
+await p.evaluate(()=>window.__ready); // MathJax готов (этап 3)
 const all=await p.evaluate(()=>EXAMPLES.map((e,i)=>{const r=render(e.s,680);return{i,g:e.g,t:e.t,scheme:r.scheme,warns:r.warns,
   svg:`<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${Math.ceil(r.h)}" viewBox="0 0 680 ${Math.ceil(r.h)}" font-family="PT Serif, serif">${r.svg}</svg>`};}));
 await b.close();

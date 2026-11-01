@@ -32,5 +32,9 @@
   "devDependencies": {
     "esbuild": "0.28.2",
     "playwright": "1.63.0"
+  },
+  "dependencies": {
+    "mathjax": "4.1.3",
+    "@mathjax/mathjax-asana-font": "4.1.3"
   }
 }

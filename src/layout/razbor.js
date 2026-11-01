@@ -2,7 +2,7 @@
 import { scanSegs } from '../parse/lexer.js';
 import { S } from '../state.js';
 import { L, n1, rect, txt, wedge } from '../svg/primitives.js';
-import { pretty } from '../text/math.js';
+import { pretty, plain } from '../text/math.js';
 import { tw } from '../text/measure.js';
 import { longWord, wrap } from '../text/wrap.js';
 
@@ -25,7 +25,7 @@ function razbor(text,maxW,o={}){
   }
   const lineW=lines.map(l=>l.length?Math.max(...l.map(p=>p.x+p.w)):0);const contentW=Math.max(...lineW,10);
   const boxW=o.box?Math.min(maxW,Math.max(o.minBox||0,contentW+2*pad+4)):contentW;const bx=o.box?(maxW-boxW)/2:0;
-  const findSeg=n=>{const q=n.toLowerCase();return segs.find(g=>g.label.toLowerCase()===q)||segs.find(g=>pretty(g.text).trim().toLowerCase()===q)||segs.find(g=>g.label.toLowerCase().includes(q))||segs.find(g=>g.text&&pretty(g.text).toLowerCase().includes(q));};
+  const findSeg=n=>{const q=n.toLowerCase();return segs.find(g=>g.label.toLowerCase()===q)||segs.find(g=>plain(g.text).trim().toLowerCase()===q)||segs.find(g=>g.label.toLowerCase().includes(q))||segs.find(g=>g.text&&plain(g.text).toLowerCase().includes(q));};
   const rules=o.rules||[],deps=o.deps||[];let svg='';
   lines.forEach((ln,li)=>{const lx=bx+(o.box?(boxW-lineW[li])/2:0);ln.forEach(p=>{p.ax=lx+p.x;});});
   let ruleW=rules.length?Math.min(250,(maxW-(rules.length-1)*12)/rules.length):0;

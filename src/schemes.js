@@ -1,6 +1,6 @@
 // ДРАКОН-ГРАФ — модуль перенесён из прототипа graf/engine.js (этап 1, без изменения поведения)
 import { SCHEME_EN, splitOutside } from './parse/lexer.js';
-import { pretty } from './text/math.js';
+import { pretty, plain as plainText } from './text/math.js';
 import { tw } from './text/measure.js';
 
 function chooseScheme(root,opts){
@@ -16,7 +16,7 @@ function chooseScheme(root,opts){
   if(Gr){if(k.some(g=>g.kind==='group'&&g.children.some(c=>c.kind==='group')))return 'дерево';if(M)return 'лестница с гребенкой';return 'эполеты';}
   const items=k.filter(c=>c.kind==='item');const n=items.length;
   const plain=items.every(i=>!i.children.some(c=>!['callout','blank'].includes(c.kind)));
-  const maxLen=Math.max(0,...items.map(i=>pretty(i.text).length));
+  const maxLen=Math.max(0,...items.map(i=>plainText(i.text).length)); // длина в знаках — по текстовому виду формул
   const W=+(opts.__W||680);
   const natural=items.reduce((s,i)=>s+Math.min(150,Math.max(64,tw(pretty(i.text))+22)),0)+(n-1)*12;
   if(items.some(i=>i.num))return S?'лестница со связкой':'лестница';

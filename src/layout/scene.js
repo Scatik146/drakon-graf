@@ -24,7 +24,7 @@ function layScene(root,W){
     else if(c.kind==='example'){const deps=c.children.filter(q=>q.kind==='dep');
       const plainEx=!hasSeg(c.text)||c.children.some(q=>q.rel);
       if(plainEx&&!rules.length){const e=attachedExample(c,cw(Math.min(iw,480)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
-      else{if(c.counter){s+=txt(['Контрпример ✗'],W/2,y,{anchor:'middle',italic:true,fill:'#8B0000'});y+=S.LH+2;}
+      else{if(c.counter){s+=txt(['Контрпример ×'],W/2,y,{anchor:'middle',italic:true,fill:'#8B0000'});y+=S.LH+2;}
         const r=razbor(c.text,iw,{box:true,minBox:S.STRICT?CW:0,bold:true,size:14,rules,deps,style:S.LSTYLE==='auto'||S.LSTYLE==='inset'?'pill':S.LSTYLE});s+=G(M0,y,r.svg);y+=r.h+14;
         const code=c.children.filter(q=>q.kind==='code');if(code.length){const rr=rich([{t:'code',lines:code.map(q=>q.text)}],iw);s+=rr.svg(M0,y-10);y+=rr.h;}}
       rules=[];}

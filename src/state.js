@@ -12,5 +12,6 @@ export function freshState(){return{
   STRICT:false,        // вариант Б: одна ширина в колонке, отбивки внутри фигуры (Р5, Р7)
   LSTYLE:'auto',       // стиль подписей разбора
   NUM:1,               // счётчик номеров ГНОМа
+  MATHS:[], MKEY:new Map(), // формулы этого рисунка: знак-метка U+F000+i ↔ формула (этап 3)
   C:{...PAL.color}};}  // палитра текущей темы
 export const S=freshState();

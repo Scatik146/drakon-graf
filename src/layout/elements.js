@@ -4,7 +4,7 @@ import { hasSeg } from '../parse/lexer.js';
 import { content } from '../parse/parser.js';
 import { S } from '../state.js';
 import { G, L, headerEllipse, memoRect, n1, pointerPath, rect, txt, wedge } from '../svg/primitives.js';
-import { pretty } from '../text/math.js';
+import { fx, mathOn, mathSvg, pretty } from '../text/math.js';
 import { tw } from '../text/measure.js';
 import { longWord, wrap, wrapNH } from '../text/wrap.js';
 
@@ -38,6 +38,10 @@ function rich(z,w,o={}){
           yy+=rh[i]+5;});return s2;},H);}
     else if(it.t==='m'){const ls=wrap(it.text,iw-14);add((x,y)=>`<circle cx="${n1(x+x0+4)}" cy="${n1(y+7)}" r="4.2" fill="${S.C.mark}"/>`+txt(ls,x+x0+14,y),ls.length*S.LH);}
     else if(it.t==='bar'){const ls=wrap(it.text,iw-12);const hh=ls.length*S.LH;add((x,y)=>L(x+x0+2,y+1,x+x0+2,y+hh-1,'#333',2)+txt(ls,x+x0+10,y),hh);}
+    else if(it.t==='f'&&mathOn()){ // выключная формула: MathJax, блок по высоте формулы (этап 3)
+      const f=fx(pretty(it.text).replace(/[\uF000-\uF7FF]/g,''),true);const fh=f.h*15,fw=f.w*15;const hh=Math.max(19,fh)+14;
+      if(f.err)S.WARN.push('Формула не разобрана: $$'+it.text+'$$');
+      add((x,y)=>rect(x+x0,y,iw,hh,'#fff',S.C.line,0,2)+mathSvg(f,x+x0+(iw-fw)/2,y+(hh-fh)/2+f.asc*15,15,'#111',true),hh);}
     else if(it.t==='f'){const ls=wrap('$'+it.text+'$',iw-20,true,15);const hh=ls.length*19+14;add((x,y)=>rect(x+x0,y,iw,hh,'#fff',S.C.line,0,2)+txt(ls,x+x0+iw/2,y+7,{anchor:'middle',bold:true,size:15,lh:19}),hh);}
     else if(it.t==='code'){const cl=it.lines.map(l=>l.replace(/\s+$/,''));const hh=cl.length*15+10;const cw=Math.min(iw,Math.max(...cl.map(l=>tw(l,false,12,true)))+16);
       add((x,y)=>rect(x+x0,y,cw,hh,S.C.code,S.C.codeb,3,1)+txt(cl,x+x0+8,y+5,{mono:true,size:12,lh:15}),hh);}
@@ -57,7 +61,7 @@ function attachedExample(c,w){
   const z=content({text:c.text,children:c.children});const r=rich(z,w,{center:!z.some(q=>q.t==='m'||q.t==='code'),onWhite:true});const th=S.LH+2;const h=r.h+th;
   return{w,h,svg:(x,y,t)=>{let s=rect(x,y,w,h,S.C.ex,S.C.exb,6,1.2);
     if(t)s+=wedge(x+w*0.3-8,y,x+w*0.3+8,y,t.tx,t.ty,S.C.ex,S.C.exb);
-    return s+txt([c.counter?'Контрпример ✗':'Пример'],x+w/2,y+5,{anchor:'middle',italic:true,fill:c.counter?'#8B0000':'#555'})+r.svg(x,y+th);}};
+    return s+txt([c.counter?'Контрпример ×':'Пример'],x+w/2,y+5,{anchor:'middle',italic:true,fill:c.counter?'#8B0000':'#555'})+r.svg(x,y+th);}};
 }
 function calloutEl(c,w){
   const z=content(c);const r=rich(z,w,{center:!z.some(q=>q.t==='m'||q.t==='code')});const h=r.h;

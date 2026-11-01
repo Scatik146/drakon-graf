@@ -2,6 +2,7 @@
 const {chromium}=require('playwright');const fs=require('fs');
 (async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:900,height:900}});
 await p.goto('file://'+require('path').resolve(__dirname,'../konspekt_v8.html')+'');
+await p.evaluate(()=>window.__ready); // MathJax готов (этап 3)
 const res=await p.evaluate((only)=>{window.DBG=only!=null;
   const NS='http://www.w3.org/2000/svg';const out=[];
   const host=document.createElement('div');document.body.appendChild(host);
