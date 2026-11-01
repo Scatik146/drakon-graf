@@ -12,7 +12,8 @@ export default function drakonGrafPlugin(md, opts = {}) {
     const t = tokens[idx];
     if (!LANG.test((t.info || '').trim())) return fence(tokens, idx, options, env, self);
     const r = render(t.content, opts);
-    if (env && Array.isArray(env.drakonGrafHints)) env.drakonGrafHints.push({ line: t.map ? t.map[0] + 1 : null, hints: r.hints });
+    if (env && Array.isArray(env.drakonGrafHints)) { const l0 = t.map ? t.map[0] + 2 : null; // первая строка текста блока в файле
+      env.drakonGrafHints.push({ line: l0, hints: r.hints.map(h => ({ ...h, fileLine: l0 && h.line ? l0 + h.line - 1 : l0 })) }); }
     const cap = opts.hints && r.hints.length
       ? '<figcaption>' + r.hints.map(h => `<div class="dg-hint">${h.code ? h.code + ': ' : ''}${md.utils.escapeHtml(h.text)}</div>`).join('') + '</figcaption>' : '';
     return `<figure class="drakon-graf" data-scheme="${md.utils.escapeHtml(r.scheme)}">${r.svg}${cap}</figure>\n`;

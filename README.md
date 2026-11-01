@@ -85,7 +85,9 @@ npx drakon-graf урок.md -o рисунки/      # все блоки «кон
 npx drakon-graf --check урок.md          # только подсказки (код выхода 1, если есть «важно»)
 ```
 
-Живой пример — [`demo/index.html`](demo/index.html). Типы для TypeScript — `index.d.ts`.
+Живой пример — [`demo/index.html`](demo/index.html). Типы для TypeScript — `index.d.ts`. Что нового в версиях — [`CHANGELOG.md`](CHANGELOG.md).
+
+Имя блока — ```` ```конспект ```` или английское ```` ```drakon-graf ````; ключевые слова можно писать по-русски или по-английски (`тема:` = `topic:`).
 
 ## Лицензия
 

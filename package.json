@@ -1,6 +1,6 @@
 {
   "name": "drakon-graf",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "ДРАКОН-ГРАФ — расширенная версия языка ГРАФ В. Д. Паронджанова: текстовое описание → графический конспект (SVG)",
   "license": "Apache-2.0",
   "author": "Сергей Николаевич Веснин",
@@ -51,7 +51,8 @@
     "index.d.ts",
     "NOTICE",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "metrics": "FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/build_metrics.mjs",

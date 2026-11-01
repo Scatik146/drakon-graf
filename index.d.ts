@@ -16,6 +16,8 @@ export interface Hint {
   code: string;
   level: 'важно' | 'совет';
   text: string;
+  /** Строка конспекта (1 — первая), к которой относится подсказка; нет — подсказка о конспекте целиком. */
+  line?: number;
 }
 export interface RenderResult {
   svg: string; width: number; height: number;

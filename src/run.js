@@ -28,7 +28,7 @@ export async function run(opts = {}) {
     if (r.hints.length) {
       if (opts.hints) {
         const cap = document.createElement('figcaption');
-        cap.innerHTML = r.hints.map(h => `<div class="dg-hint dg-${h.level === 'важно' ? 'important' : 'advice'}">${h.code ? h.code + ': ' : ''}${h.text.replace(/</g, '&lt;')}</div>`).join('');
+        cap.innerHTML = r.hints.map(h => `<div class="dg-hint dg-${h.level === 'важно' ? 'important' : 'advice'}">${h.line ? 'строка ' + h.line + ' · ' : ''}${h.code ? h.code + ': ' : ''}${h.text.replace(/</g, '&lt;')}</div>`).join('');
         fig.appendChild(cap);
       } else console.info('drakon-graf:', r.hints.map(h => (h.code ? h.code + ' ' : '') + h.text).join(' | '));
     }

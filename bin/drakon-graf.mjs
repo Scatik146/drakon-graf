@@ -48,7 +48,7 @@ for (const f of files) {
   if (isMd && !list.length) console.error(`${f}: блоков «конспект» нет`);
   list.forEach((b, k) => {
     const r = render(b.text, o); total++;
-    for (const h of r.hints) { if (h.level === 'важно') bad++; console.error(`${f}:${b.line}: ${h.code || '—'} ${h.level}: ${h.text}`); }
+    for (const h of r.hints) { if (h.level === 'важно') bad++; console.error(`${f}:${h.line ? b.line + h.line - 1 : b.line}: ${h.code || '—'} ${h.level}: ${h.text}`); }
     if (check) return;
     if (out || isMd) {
       const dir = out || path.dirname(f); mkdirSync(dir, { recursive: true });
