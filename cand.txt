@@ -1,0 +1,29 @@
+https://drakon.su/_media/parondzhanov_.pdf|Как написать
+https://forum.drakon.su/viewtopic.php?f=94&t=6050|учебник
+https://www.chitai-gorod.ru/product/pochemu-vrachi-ubivayut-i-kalechat-pacientov-2543586|Почему врачи
+https://dmkpress.com/catalog/computer/programming/algorithms/978-5-94074-800-7/|Учись писать
+https://drakon.su/_media/01._parondzhanov_uchis_pisat_chitat_i_ponimat_algoritmy.pdf|
+https://search.rsl.ru/ru/record/01007566248|
+http://ito.su/2000/II/4/4104.html|хемокурс
+https://cyberleninka.ru/article/n/vizualizatsiya-uchebnogo-materiala-kak-sredstvo-povysheniya-kachestva-obucheniya|Визуализация
+https://science-education.ru/article/view?id=19682|ПИКТОГРАММА
+https://books.google.com/books?id=eABkzQEACAAJ|Венда
+https://ctan.org/pkg/annotate-equations|annotate
+https://nsportal.ru/nachalnaya-shkola/matematika/2014/09/30/etalony-pomoshchniki-uchiteley-i-uchenikov-0|Эталоны
+https://edsoo.ru/|
+https://kpolyakov.spb.ru/school/probook.htm|Поляков
+https://www.artlebedev.ru/izdal/spravochnik-izdatelya-i-avtora/|правочник
+https://nb.lib.tsu.ru/bib/10834|
+https://ru.wikisource.org/wiki/ГОСТ_8.417|8.417
+https://docs.cntd.ru/document/573500115|3685
+https://www.iso.org/standard/26153.html|14977
+https://www.iso.org/standard/76921.html|80000
+https://www.iso.org/standard/37326.html|24612
+https://www.mathjax.org/|MathJax
+https://ctan.org/pkg/asana-math|Asana
+https://ctan.org/pkg/paratype|ParaType
+https://en.wikipedia.org/wiki/PT_Fonts|PT
+https://dejavu-fonts.github.io/|DejaVu
+https://docs.npmjs.com/trusted-publishers|rusted
+https://docs.npmjs.com/cli/v11/commands/npm-trust|trust
+https://www.npmjs.com/package/drakon-graf|
