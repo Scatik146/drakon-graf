@@ -28,7 +28,7 @@
 
 1. **Скачайте файл** и **прикрепите его к чату** с любой нейросетью — Алиса, GigaChat, Qwen, DeepSeek, GLM, ChatGPT, Claude.
 2. Попросите: *«По этому навыку сделай графический конспект для 7 класса про …»*.
-3. Вставьте полученный текст в окно проверки — программа нарисует схему.
+3. Вставьте полученный текст в [окно проверки](https://scatik146.github.io/teacher-workpad/lib/drakon-graf/index.html) — программа нарисует схему.
 
 Для Claude есть архив [`navyk/drakon-graf-konspekt.zip`](navyk/drakon-graf-konspekt.zip): загрузите его в Customize → Skills, и навык будет работать во всех чатах без прикрепления. Подробнее — [`navyk/README.md`](navyk/README.md).
 
