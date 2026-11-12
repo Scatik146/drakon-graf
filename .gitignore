@@ -6,3 +6,4 @@ graf/tests/diff/
 dist/
 /fonts/
 *.tgz
+_site/
