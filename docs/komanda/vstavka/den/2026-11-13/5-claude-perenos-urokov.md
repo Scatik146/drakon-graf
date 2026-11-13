@@ -1,0 +1,6 @@
+Задача: перенести готовые уроки в teacher-workpad. Источники: SourceCraft `scatik/max-class-bot`, папка `teacher` (уроки, приложения, материалы), и неопубликованные файлы учителя. Прочитай `Scatik146/ii-komanda/AVTOMATIZACIYA.md` и `istochniki/uroki/README.md`, в teacher-workpad — только `CLAUDE.md` (правила сайта). Работаем по навыку «экономная сессия».
+
+Как получить файлы (SourceCraft из облачной среды Claude недоступен): учитель на своём компьютере выполняет
+`git clone https://git.sourcecraft.dev/scatik/max-class-bot.git` и `git clone https://github.com/Scatik146/teacher-workpad.git`, копирует папку `max-class-bot/teacher` в `teacher-workpad/chernoviki/sourcecraft-teacher/`, неопубликованное — в `teacher-workpad/chernoviki/neopublikovannoe/`, затем `git add -A`, `git commit -m "Черновики: перенос"`, `git push`. Либо подключает чат к компьютеру через приложение Claude.
+
+Что сделать: опись черновиков (урок, класс, предмет, что есть: канва, конспект, приложение, печать, ДЗ); проверка приложений автоматикой (`tools/` teacher-workpad: http/CDN, ES2018, один файл, латиница); раскладка по `модуль/тема` с флагом в файле (готово / требует правки / черновик); исправлять только явные поломки, остальное — списком. Готово, когда: `chernoviki/OPIS.md` с таблицей и флагами, готовые уроки — в каталоге сайта, итог одной строкой в `BRIFING.md` drakon-graf.
