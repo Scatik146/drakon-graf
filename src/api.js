@@ -11,7 +11,7 @@ import { plain } from './text/math.js';
 import { METRICS } from './text/metrics.js';
 import { normKw } from './parse/lexer.js';
 
-export const version = '0.9.1';
+export const version = '0.9.2';
 
 // ── Подсказки: код и уровень по каталогу (формальное описание, таблица 9.1) ─────────────────
 // Уровень «важно» — синтаксис, ссылки, обязательные части; «совет» — мягкие пределы и стиль.

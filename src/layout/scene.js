@@ -32,6 +32,7 @@ function layScene(root,W){
     else if(c.kind==='item'||c.kind==='text'||c.kind==='group'){const e=itemEl(c.kind==='group'?{text:c.text,children:c.children.map(q=>q.kind==='item'?{...q,kind:'marker'}:q)}:c,iw,{auto:true});s+=e.svg(M0,y);y+=e.h+12;}
     else if(c.kind==='arrow'){const bw=cw(Math.min(iw,340));const e=boxEl(c.text,bw,{shape:'plain',auto:true});const x=(W-bw)/2;s+=e.svg(x,y);y+=e.h;
       const more=k.slice(i+1).some(q=>q.kind!=='blank');if(more){s+=blockArrow(W/2,y,40,26,false);y+=30;}else y+=12;}
+    else if(c.kind==='formula'){const fw=cw(Math.min(iw,480));const r=rich([{t:'f',text:c.text}],fw);s+=r.svg((W-fw)/2,y);y+=r.h+6;} // выключная $$…$$ отдельной строкой (задание 008)
     else if(c.kind==='callout'){const e=calloutEl(c,cw(Math.min(iw,420)));s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
     else if(c.kind==='link'){const e=boxEl(c.parts.join(' · '),Math.min(iw,Math.max(120,tw(pretty(c.parts.join(' · ')),true)+40)),{shape:'round',bold:true});s+=e.svg((W-e.w)/2,y);y+=e.h+12;}
     else if(c.kind==='code'){const lines=[c.text];while(k[i+1]&&k[i+1].kind==='code')lines.push(k[++i].text);const r=rich([{t:'code',lines}],iw);s+=r.svg(M0,y);y+=r.h+6;}

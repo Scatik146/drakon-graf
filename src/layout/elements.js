@@ -4,7 +4,7 @@ import { hasSeg } from '../parse/lexer.js';
 import { content } from '../parse/parser.js';
 import { S } from '../state.js';
 import { G, L, headerEllipse, memoRect, n1, pointerPath, rect, txt, wedge } from '../svg/primitives.js';
-import { fx, mathOn, mathSvg, pretty } from '../text/math.js';
+import { fx, mathOn, mathSvg, mathVExt, pretty, withDisp } from '../text/math.js';
 import { tw } from '../text/measure.js';
 import { longWord, wrap, wrapNH } from '../text/wrap.js';
 
@@ -22,7 +22,11 @@ function rich(z,w,o={}){
       it.ml=ml;}
     else if(S.STRICT)it.ml=mlOf(it);
     prev=it;
-    if(it.t==='p'){const ls=wrap(it.text,iw,o.bold);add((x,y)=>txt(ls,x+x0+(o.center?iw/2:0),y,{anchor:o.center?'middle':'start',bold:o.bold}),ls.length*S.LH);}
+    if(it.t==='p'){const ls=wrap(it.text,iw,o.bold);
+      // строка с высокой формулой (дробь, корень, стрелка вектора) раздвигается по формуле (задание 008); обычные строки — как раньше
+      const A0=S.FS-2,D0=S.LH-A0,vh=ls.map(l=>{const e=mathVExt(l,S.FS);return{A:Math.max(A0,e.a+2),D:Math.max(D0,e.d+3)};});
+      if(vh.every(v=>v.A===A0&&v.D===D0))add((x,y)=>txt(ls,x+x0+(o.center?iw/2:0),y,{anchor:o.center?'middle':'start',bold:o.bold}),ls.length*S.LH);
+      else{const H=vh.reduce((q,v)=>q+v.A+v.D,0);add((x,y)=>{let yy=y,out='';ls.forEach((l,i)=>{out+=txt([l],x+x0+(o.center?iw/2:0),yy+vh[i].A-A0,{anchor:o.center?'middle':'start',bold:o.bold});yy+=vh[i].A+vh[i].D;});return out;},H);}}
     else if(it.t==='rz'){const st=S.LSTYLE==='auto'?(o.onWhite?'pill':'inset'):S.LSTYLE;
       if(st==='inset'){const r=razbor(it.text,iw-16,{style:'pill'});const bw=Math.min(iw,r.w+16),dx=o.center?(iw-bw)/2:0;
         add((x,y)=>rect(x+x0+dx,y,bw,r.h+12,S.C.ex,S.C.exb,4,1)+G(x+x0+dx+8,y+6,r.svg),r.h+12);}
@@ -87,7 +91,7 @@ function memoEl(node,W,o={}){
   const mw=W-pw-10-numW-crW;
   const pz=hasSeg(node.pointer)?[{t:'rz',text:node.pointer}]:null;
   const pl=wrapNH(node.pointer,pw-26);const pr=pz?rich(pz,pw-12):null;const pH=pr?pr.h:pl.length*S.LH+14;
-  const r=rich(content(node),mw);const rcs=right.map(c=>calloutEl(c,crW-14));const h=Math.max(pH,r.h,30,...rcs.map(c=>c.h));
+  const r=withDisp(()=>rich(content(node),mw));const rcs=right.map(c=>calloutEl(c,crW-14));const h=Math.max(pH,r.h,30,...rcs.map(c=>c.h));
   const hs=hangers(node,mw,c=>!right.includes(c));
   const bh=hs.reduce((s,c)=>s+c.h+22,0);
   return{h:h+bh,cy:h/2,svg:(x,y)=>{

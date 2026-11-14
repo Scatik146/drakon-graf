@@ -29,8 +29,15 @@ function mathText(f){
     .replace(/<=/g,'≤').replace(/>=/g,'≥').replace(/!=/g,'≠').replace(/\*/g,'·').replace(/sqrt/g,'√').replace(/[{}]/g,'');
 }
 // ✗ → ×: знака «✗» нет ни в PT Serif, ни в Asana Math; пара «✓ / ×» читается так же (этап 3)
-function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\->/g,'->').replace(/\$([^$]+)\$/g,(m,f)=>MJ?mark(f):mathText(f)).replace(/`([^`]*)`/g,'$1').replace(/\u2717/g,'×').replace(/\uE000/g,'$').replace(//g,'|').replace(//g,'{').replace(//g,'}');}
+function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\->/g,'->').replace(/\$([^$]+)\$/g,(m,f)=>MJ?mark(DISP?'\\displaystyle '+f:f):mathText(f)).replace(/`([^`]*)`/g,'$1').replace(/\u2717/g,'×').replace(/\uE000/g,'$').replace(//g,'|').replace(//g,'{').replace(//g,'}');}
 
+
+// Формулы в пометках примера и в строке «Формула ->» набираются как выключные (\displaystyle): дробь, индексы и корень
+// не уменьшаются до размера индекса (задание 008). Включается на время раскладки: withDisp(() => …).
+let DISP=false;
+function withDisp(fn){const d=DISP;DISP=true;try{return fn();}finally{DISP=d;}}
+/** Высота формул строки над линией шрифта (a) и под ней (d), px при кегле size. */
+function mathVExt(s,size){let a=0,d=0;for(const ch of String(s))if(isMark(ch)){const f=markOf(ch);a=Math.max(a,f.asc*size);d=Math.max(d,(f.h-f.asc)*size);}return{a,d};}
 
 // ── MathJax ──────────────────────────────────────────────────────────────────────────────
 let MJ=null;const CACHE=new Map();
@@ -62,4 +69,4 @@ function mathSvg(f,x,base,size,fill,bold){const n=v=>(+v).toFixed(2);
   return `<svg x="${n(x)}" y="${n(base-f.asc*size)}" width="${n(f.w*size)}" height="${n(f.h*size)}" viewBox="${f.vb.join(' ')}" overflow="visible" color="${fill||'#111'}">`+
     (bold?f.inner.replace('stroke-width="0"','stroke-width="30"'):f.inner)+'</svg>';}
 
-export { SUB, SUP, grp, mathText, pretty, subify, supify, texArgs, useMathJax, mathOn, plain, fx, mark, isMark, markOf, mathSvg, MARK0 };
+export { withDisp, mathVExt, SUB, SUP, grp, mathText, pretty, subify, supify, texArgs, useMathJax, mathOn, plain, fx, mark, isMark, markOf, mathSvg, MARK0 };
