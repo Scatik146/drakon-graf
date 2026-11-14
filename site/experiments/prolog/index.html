@@ -47,6 +47,9 @@
   <button id="btnKinds">1. Сравнить разбор строк: JS и Prolog</button>
   <button id="btnRound">2. Самопроверка: порождение → разбор</button>
   <button id="btnCheck">3. Проверка вложенности: JS и Prolog</button>
+  <br>
+  <button id="btnRodo">Подставить пример «Родословная»</button>
+  <button id="btnKnow">4. Знания: ГРАФ → Prolog → ответ</button>
 </div>
 <div id="out"></div>
 
@@ -165,6 +168,33 @@ function compareNesting() {
   show(table(['JS', 'Prolog'], [[[esc(js.join('\n') || 'нет'), esc(pl.join('\n') || 'нет')], same]]));
 }
 
+/* ---------- режим знаний ---------- */
+
+const RODOSLOVNAYA = `тема: Родословная
+режим: знания
+А -> ?
+Б -> ?
+В -> ?
+связь Иван -> Пётр: родитель
+связь Пётр -> Анна: родитель
+правило: А предок В, если А родитель В
+правило: А предок В, если А родитель Б и Б предок В
+пример: Иван предок Анны
+контрпример: Анна предок Ивана
+запрос: кто предок Анны`;
+
+// подставить: кладёт в поле пример «Родословная»
+function putRodoslovnaya() { document.getElementById('src').value = RODOSLOVNAYA; say('Пример подставлен. Нажмите кнопку 4.'); }
+
+// знания: Prolog превращает конспект в базу знаний и отвечает
+function knowledge() {
+  const a = ask('graf:know_text(Tx, Ls)', { Tx: document.getElementById('src').value });
+  const lines = a ? a.Ls.map(str) : ['Prolog не смог прочитать конспект'];
+  const bad = lines.some(l => l.startsWith('✗') || l.includes('не понято'));
+  say(bad ? 'Есть ошибки — смотрите строки с ✗.' : 'Знания прочитаны, проверки прошли.');
+  show(`<pre style="font:14px/1.5 'PT Mono',monospace">${esc(lines.join('\n'))}</pre>`);
+}
+
 /* ---------- запуск ---------- */
 
 // подключить кнопки: каждая кнопка — одна проверка
@@ -172,6 +202,8 @@ function wireButtons() {
   document.getElementById('btnKinds').onclick = compareKinds;
   document.getElementById('btnRound').onclick = roundTrip;
   document.getElementById('btnCheck').onclick = compareNesting;
+  document.getElementById('btnRodo').onclick = putRodoslovnaya;
+  document.getElementById('btnKnow').onclick = knowledge;
 }
 
 // начать: поднимает Prolog и включает кнопки
