@@ -2,26 +2,36 @@
 import { scanSegs } from '../parse/lexer.js';
 import { S } from '../state.js';
 import { L, n1, rect, txt, wedge } from '../svg/primitives.js';
-import { pretty, plain } from '../text/math.js';
+import { mathVExt, pretty, plain, withDisp } from '../text/math.js';
 import { tw } from '../text/measure.js';
 import { longWord, wrap } from '../text/wrap.js';
 
 function sentenceTokens(s){return scanSegs(s);}
 function pill(text,maxW){const ls=wrap(text,maxW-18);const w=Math.max(...ls.map(l=>tw(l)))+20;return{ls,w,h:ls.length*S.LH+8};}
+// подпись под частью примера: обычная ширина до 150 px; длинная подпись (3 строки и больше) расширяется,
+// пока не уложится в 2 строки (не шире 320 px и ширины рисунка) — не узкий столбец слов (задание 008)
+function labelPill(text,maxW){let c=pill(text,150);const lim=Math.min(320,maxW);
+  for(let w=160;c.ls.length>2&&w<=lim;w+=10)c=pill(text,w);return c;}
 function spreadRow(arr,lo,hi){arr.sort((p,q)=>p.t-q.t);arr.forEach(o=>o.x=o.t-o.c.w/2);
   for(let i=0;i<arr.length;i++)arr[i].x=Math.max(arr[i].x,lo,i?arr[i-1].x+arr[i-1].c.w+8:lo);
   for(let i=arr.length-1;i>=0;i--)arr[i].x=Math.min(arr[i].x,i<arr.length-1?arr[i+1].x-arr[i].c.w-8:hi-arr[i].c.w);}
 /* razbor: text с сегментами. o.box — белая рамка «Пример»; o.rules — правила-выноски со стрелками; o.deps — ломаные стрелки */
-function razbor(text,maxW,o={}){
+/* Формулы в примере набираются выключными (withDisp) — дроби и индексы не мельчают (задание 008).
+   Высокая формула раздвигает свою строку: у каждой части — высота над линией шрифта (A) и под ней (D);
+   строка берёт наибольшие, пометка — рамку по своей формуле с запасом. Без высоких формул всё как раньше. */
+function razbor(text,maxW,o={}){return withDisp(()=>razbor0(text,maxW,o));}
+function razbor0(text,maxW,o={}){
   const fs=o.size||S.FS,bold=!!o.bold,pad=o.box?14:0;const style=o.style||'pill';
   const toks=sentenceTokens(text);const segH=fs+9,lh=segH+7;const innerW=maxW-2*pad;
+  const A0=segH/2+fs/2-2,D0=segH-A0,PADV=5; // линия шрифта в обычной пометке: A0 над ней, D0 под ней
+  const vext=(str,isSeg)=>{const e=mathVExt(str,fs);const pv=isSeg?PADV:1;return{A:Math.max(A0,e.a+pv),D:Math.max(D0,e.d+pv)};};
   const lines=[[]];let cw=0;const segs=[];
   const add=p=>{if(cw+p.w>innerW&&cw>0){lines.push([]);cw=0;if(p.t==='txt'&&!p.text.trim())return;}
     p.x=cw;lines[lines.length-1].push(p);cw+=p.w;};
   for(const t of toks){
-    if(t.t==='txt')(t.text.match(/\$[^$]*\$|`[^`]*`|\s+|[^\s$`]+|[$`]/g)||[]).forEach(w=>add({t:'txt',text:w,w:tw(pretty(w),bold,fs,/^`/.test(w))}));
-    else{const empty=!t.text.trim();const mono=/^`[^`]*`$/.test(t.text.trim());const pt=pretty(t.text);
-      const w=empty?10:tw(pt,bold,fs,mono)+(style==='brace'?4:(pt.trim().length<=2?12:16));const seg={...t,pt,w,mono,empty};segs.push(seg);add(seg);}
+    if(t.t==='txt')(t.text.match(/\$[^$]*\$|`[^`]*`|\s+|[^\s$`]+|[$`]/g)||[]).forEach(w=>{const pw=pretty(w);add({t:'txt',text:w,pw,...vext(pw,false),w:tw(pw,bold,fs,/^`/.test(w))});});
+    else{const empty=!t.text.trim();const mono=/^`[^`]*`$/.test(t.text.trim());const pt=pretty(t.text);const v=empty?{A:A0,D:D0}:vext(pt,true);const tall=v.A+v.D>segH+0.5;
+      const w=empty?10:tw(pt,bold,fs,mono)+(style==='brace'?4:(pt.trim().length<=2?12:16))+(tall&&style!=='brace'?10:0);const seg={...t,pt,w,mono,empty,...v};segs.push(seg);add(seg);}
   }
   const lineW=lines.map(l=>l.length?Math.max(...l.map(p=>p.x+p.w)):0);const contentW=Math.max(...lineW,10);
   const boxW=o.box?Math.min(maxW,Math.max(o.minBox||0,contentW+2*pad+4)):contentW;const bx=o.box?(maxW-boxW)/2:0;
@@ -48,16 +58,18 @@ function razbor(text,maxW,o={}){
   const depTop=(rh?rh+14:0)+Math.max(10,dh/2+2);
   let y=deps.length?depTop+Math.max(20,dh/2+12):(rh?rh+30:0);
   const boxY=y;const sy=boxY+(o.box?9:0);
-  lines.forEach((ln,li)=>{const lx=bx+(o.box?(boxW-lineW[li])/2:0);ln.forEach(p=>{p.ax=lx+p.x;p.ay=sy+li*lh;});});
-  const boxH=lines.length*lh-7+(o.box?18:0)+(style==='brace'?6:0);
+  let ly=sy;lines.forEach((ln,li)=>{const lx=bx+(o.box?(boxW-lineW[li])/2:0);const LA=Math.max(A0,...ln.map(p=>p.A||A0)),LD=Math.max(D0,...ln.map(p=>p.D||D0));
+    ln.forEach(p=>{const a=p.A||A0,d=p.D||D0;p.ax=lx+p.x;p.base=ly+LA;p.ay=p.base-a;p.h=a+d;});ly+=LA+LD+7;});
+  const boxH=ly-sy-7+(o.box?18:0)+(style==='brace'?6:0);
   if(o.box)svg+=rect(bx,boxY,boxW,boxH,S.C.ex,S.C.exb,0,1.6);
   const pillF=style==='white'?'#fff':S.C.fill, pillS=style==='white'?S.C.exb:S.C.line;
   lines.forEach(ln=>ln.forEach(p=>{
-    if(p.t==='txt')svg+=txt([pretty(p.text)],p.ax,p.ay+(segH-fs)/2,{bold,size:fs,mono:/^`/.test(p.text)});
-    else if(p.empty)svg+=L(p.ax+p.w/2,p.ay+2,p.ax+p.w/2,p.ay+segH-2,S.C.exb,1,'2 2'); // пустое место
-    else if(style==='brace'){svg+=txt([p.pt],p.ax+p.w/2,p.ay+(segH-fs)/2,{anchor:'middle',bold,size:fs,mono:p.mono});
-      if(p.label){const y1=p.ay+segH,x1=p.ax+1,x2=p.ax+p.w-1,xm=(x1+x2)/2;svg+=`<path d="M${n1(x1)},${n1(y1-3)}q0,4 4,4H${n1(xm-3)}q3,0 3,4q0,-4 3,-4H${n1(x2-4)}q4,0 4,-4" fill="none" stroke="${S.C.line}" stroke-width="1.2"/>`;}}
-    else svg+=rect(p.ax+1,p.ay,p.w-2,segH,'#fff',S.C.exb,segH/2,1.1)+txt([p.pt],p.ax+p.w/2,p.ay+(segH-fs)/2,{anchor:'middle',bold,size:fs,mono:p.mono});
+    const ty0=p.base-(fs-2); // верх строки текста: линия шрифта общая для всей строки примера
+    if(p.t==='txt')svg+=txt([p.pw],p.ax,ty0,{bold,size:fs,mono:/^`/.test(p.text)});
+    else if(p.empty)svg+=L(p.ax+p.w/2,p.ay+2,p.ax+p.w/2,p.ay+p.h-2,S.C.exb,1,'2 2'); // пустое место
+    else if(style==='brace'){svg+=txt([p.pt],p.ax+p.w/2,ty0,{anchor:'middle',bold,size:fs,mono:p.mono});
+      if(p.label){const y1=p.ay+p.h,x1=p.ax+1,x2=p.ax+p.w-1,xm=(x1+x2)/2;svg+=`<path d="M${n1(x1)},${n1(y1-3)}q0,4 4,4H${n1(xm-3)}q3,0 3,4q0,-4 3,-4H${n1(x2-4)}q4,0 4,-4" fill="none" stroke="${S.C.line}" stroke-width="1.2"/>`;}}
+    else svg+=rect(p.ax+1,p.ay,p.w-2,p.h,'#fff',S.C.exb,segH/2,1.1)+txt([p.pt],p.ax+p.w/2,ty0,{anchor:'middle',bold,size:fs,mono:p.mono});
   }));
   if(rl.length){const objs=rl.map(q=>{const tg=q.r.targets.map(n=>{const s=findSeg(n);if(!s)S.WARN.push(`Правило: не найдена часть «${n}» в примере`);return s;}).filter(Boolean);
       return{q,tg,t:tg.length?tg.reduce((s,g)=>s+g.ax+g.w/2,0)/tg.length:maxW/2,c:{w:ruleW}};});
@@ -65,7 +77,7 @@ function razbor(text,maxW,o={}){
     if(ruleSide)objs.sort((a,b)=>a.t-b.t).forEach((ob,i)=>ob.x=ruleX0+i*(ruleW+12));
     objs.forEach(({q,tg,x})=>{const ry=rh-q.h;svg+=rect(x,ry,ruleW,q.h,S.C.fill,S.C.line,3,1.2);
       tg.forEach(g=>{const sR=ruleSide==='R'&&g.ax+g.w<x+10,sL=ruleSide==='L'&&g.ax>x+ruleW-10;
-        const gx=sR?g.ax+g.w+1:sL?g.ax-1:g.ax+g.w/2,gy=(sR||sL)?g.ay+segH/2:g.ay;const b=sR?x+10:sL?x+ruleW-26:Math.max(x+10,Math.min(x+ruleW-26,gx-8));svg+=wedge(b,ry+q.h,b+16,ry+q.h,gx,gy,S.C.fill,S.C.line);});
+        const gx=sR?g.ax+g.w+1:sL?g.ax-1:g.ax+g.w/2,gy=(sR||sL)?g.ay+g.h/2:g.ay;const b=sR?x+10:sL?x+ruleW-26:Math.max(x+10,Math.min(x+ruleW-26,gx-8));svg+=wedge(b,ry+q.h,b+16,ry+q.h,gx,gy,S.C.fill,S.C.line);});
       svg+=txt(q.ls,x+ruleW/2,ry+6,{anchor:'middle'});});}
   deps.forEach(d=>{const A=findSeg(d.a),B=findSeg(d.b);if(!A||!B){S.WARN.push(`Связь: не найдены части «${d.a}» → «${d.b}»`);return;}
     const ax=A.ax+A.w/2,bxx=B.ax+B.w/2,top=depTop;
@@ -74,7 +86,7 @@ function razbor(text,maxW,o={}){
   y=boxY+boxH;
   // подписи снизу: текст примера НЕ раздвигается; подписи раскладываются по рядам,
   // хвост — вертикальный, хвосты не пересекают чужие подписи
-  const bl=segs.filter(g=>g.label).map(g=>({g,c:style==='brace'?{ls:wrap(g.label,140,false,S.FS-1),w:0,h:0}:pill(g.label,150),t:g.ax+g.w/2}));
+  const bl=segs.filter(g=>g.label).map(g=>({g,c:style==='brace'?{ls:wrap(g.label,140,false,S.FS-1),w:0,h:0}:labelPill(g.label,maxW),t:g.ax+g.w/2}));
   if(bl.length){
     if(style==='brace')bl.forEach(o=>{o.c.w=Math.max(...o.c.ls.map(l=>tw(l,false,S.FS-1)))+6;o.c.h=o.c.ls.length*(S.FS+2)+2;});
     const rowH=Math.max(...bl.map(o=>o.c.h))+8;const gap=10;const placed=[];
@@ -92,7 +104,7 @@ function razbor(text,maxW,o={}){
     // по рядам: подпись может сдвинуться вбок за свою часть (хвост наклонный, не больше 70 px), чтобы встать рядом выше;
     // хвост не пересекает чужие подписи и хвосты; подпись не загораживает хвосты тех, кто встанет ниже
     const by0=y+(style==='brace'?6:18);
-    const tailOf=(o,x,r)=>{const b=Math.max(x+4,Math.min(x+o.c.w-16,o.t-6));return[b+6,by0+r*rowH,o.t,o.g.ay+segH];};
+    const tailOf=(o,x,r)=>{const b=Math.max(x+4,Math.min(x+o.c.w-16,o.t-6));return[b+6,by0+r*rowH,o.t,o.g.ay+o.g.h];};
     const segX=(a,b)=>{const[x1,y1,x2,y2]=a,[x3,y3,x4,y4]=b;const d=(x2-x1)*(y4-y3)-(y2-y1)*(x4-x3);if(Math.abs(d)<1e-9)return false;
       const u=((x3-x1)*(y4-y3)-(y3-y1)*(x4-x3))/d,v=((x3-x1)*(y2-y1)-(y3-y1)*(x2-x1))/d;return u>0.02&&u<0.98&&v>0.02&&v<0.98;};
     const segRect=(sg,rx,ry,rw,rh2,m)=>{for(let k=1;k<24;k++){const px=sg[0]+(sg[2]-sg[0])*k/24,py=sg[1]+(sg[3]-sg[1])*k/24;if(px>rx-m&&px<rx+rw+m&&py>ry-m&&py<ry+rh2+m)return true;}return false;};
@@ -111,7 +123,7 @@ function razbor(text,maxW,o={}){
       rest=left;}
     rest.forEach(o=>{o.r=(placed.length?Math.max(...placed.map(q=>q.r)):-1)+1;o.x=Math.max(0,Math.min(o.t-o.c.w/2,maxW-o.c.w));placed.push(o);});
     const by=y+(style==='brace'?6:18)+(oneRow?Math.min(30,oneRow.off/5):0);const nR=Math.max(...placed.map(q=>q.r))+1;
-    placed.forEach(o=>{const yy=by+o.r*rowH;const tx=o.t,ty=o.g.ay+segH+(style==='brace'?5:0);
+    placed.forEach(o=>{const yy=by+o.r*rowH;const tx=o.t,ty=o.g.ay+o.g.h+(style==='brace'?5:0);
       if(style==='brace'){if(yy>ty+2)svg+=L(tx,ty,Math.max(o.x+4,Math.min(o.x+o.c.w-4,tx)),yy,S.C.line,1);
         svg+=txt(o.c.ls,o.x+o.c.w/2,yy,{anchor:'middle',italic:true,size:S.FS-1,lh:S.FS+2,fill:'#5a2a00'});}
       else{svg+=rect(o.x,yy,o.c.w,o.c.h,pillF,pillS,o.c.h/2,1.1);
@@ -125,4 +137,4 @@ function razbor(text,maxW,o={}){
 
 /* ============================ СОДЕРЖИМОЕ ФИГУР ============================ */
 
-export { pill, razbor, sentenceTokens, spreadRow };
+export { labelPill, pill, razbor, sentenceTokens, spreadRow };

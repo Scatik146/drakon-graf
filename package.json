@@ -1,6 +1,6 @@
 {
   "name": "drakon-graf",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "ДРАКОН-ГРАФ — расширенная версия языка ГРАФ В. Д. Паронджанова: текстовое описание → графический конспект (SVG)",
   "license": "Apache-2.0",
   "author": "Сергей Николаевич Веснин",
@@ -58,7 +58,7 @@
     "metrics": "FONTCONFIG_FILE=graf/tests/fonts/fonts.conf node tools/build_metrics.mjs",
     "bundle": "node tools/bundle.mjs",
     "build": "node tools/bundle.mjs && python3 graf/build.py",
-    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs && node graf/tests/en.mjs",
+    "test": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js && node graf/tests/api.mjs && node graf/tests/en.mjs && node graf/tests/formuly.mjs",
     "etalon:update": "node tools/bundle.mjs && python3 graf/build.py && node graf/tests/run.js --update",
     "prepack": "node tools/prepack.mjs"
   },

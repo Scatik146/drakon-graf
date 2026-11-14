@@ -29,8 +29,15 @@ function mathText(f){
     .replace(/<=/g,'≤').replace(/>=/g,'≥').replace(/!=/g,'≠').replace(/\*/g,'·').replace(/sqrt/g,'√').replace(/[{}]/g,'');
 }
 // ✗ → ×: знака «✗» нет ни в PT Serif, ни в Asana Math; пара «✓ / ×» читается так же (этап 3)
-function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\->/g,'->').replace(/\$([^$]+)\$/g,(m,f)=>MJ?mark(f):mathText(f)).replace(/`([^`]*)`/g,'$1').replace(/\u2717/g,'×').replace(/\uE000/g,'$').replace(//g,'|').replace(//g,'{').replace(//g,'}');}
+function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\->/g,'->').replace(/\$([^$]+)\$/g,(m,f)=>MJ?mark(DISP?'\\displaystyle '+f:f):mathText(f)).replace(/`([^`]*)`/g,'$1').replace(/\u2717/g,'×').replace(/\uE000/g,'$').replace(//g,'|').replace(//g,'{').replace(//g,'}');}
 
+
+// Формулы в пометках примера и в строке «Формула ->» набираются как выключные (\displaystyle): дробь, индексы и корень
+// не уменьшаются до размера индекса (задание 008). Включается на время раскладки: withDisp(() => …).
+let DISP=false;const DISP_K=1.15; // масштаб выключных формул в пометках и в «Формула ->» (просьба учителя 14.11: «ещё чуть крупнее»)
+function withDisp(fn){const d=DISP;DISP=true;try{return fn();}finally{DISP=d;}}
+/** Высота формул строки над линией шрифта (a) и под ней (d), px при кегле size. */
+function mathVExt(s,size){let a=0,d=0;for(const ch of String(s))if(isMark(ch)){const f=markOf(ch);a=Math.max(a,f.asc*size);d=Math.max(d,(f.h-f.asc)*size);}return{a,d};}
 
 // ── MathJax ──────────────────────────────────────────────────────────────────────────────
 let MJ=null;const CACHE=new Map();
@@ -52,7 +59,8 @@ function flatG(s){const st=[];return s.replace(/<g>|<g\s[^>]*>|<\/g>/g,t=>{if(t=
 function plain(s){const m=MJ;MJ=null;try{return pretty(s);}finally{MJ=m;}}
 /** Метка формулы для строки текста. */
 function mark(tex){let c=S.MKEY.get(tex);if(c)return c;
-  const f=fx(tex,false);const i=S.MATHS.length;S.MATHS.push({tex,...f});
+  const f=fx(tex,false);const i=S.MATHS.length;const k=/^\\displaystyle /.test(tex)?DISP_K:1; // выключные формулы — чуть крупнее текста
+  S.MATHS.push({tex,...f,w:f.w*k,h:f.h*k,asc:f.asc*k});
   if(f.err)S.WARN.push('Формула не разобрана: $'+tex+'$');
   c=String.fromCharCode(MARK0+i);S.MKEY.set(tex,c);return c;}
 const isMark=ch=>{const k=ch.charCodeAt(0);return k>=MARK0&&k<MARK0+0x800;};
@@ -62,4 +70,4 @@ function mathSvg(f,x,base,size,fill,bold){const n=v=>(+v).toFixed(2);
   return `<svg x="${n(x)}" y="${n(base-f.asc*size)}" width="${n(f.w*size)}" height="${n(f.h*size)}" viewBox="${f.vb.join(' ')}" overflow="visible" color="${fill||'#111'}">`+
     (bold?f.inner.replace('stroke-width="0"','stroke-width="30"'):f.inner)+'</svg>';}
 
-export { SUB, SUP, grp, mathText, pretty, subify, supify, texArgs, useMathJax, mathOn, plain, fx, mark, isMark, markOf, mathSvg, MARK0 };
+export { withDisp, mathVExt, SUB, SUP, grp, mathText, pretty, subify, supify, texArgs, useMathJax, mathOn, plain, fx, mark, isMark, markOf, mathSvg, MARK0 };
