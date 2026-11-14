@@ -12,7 +12,7 @@
       - нет формул $$…$$, скобки }, выкладок (=, =>, ≤ …).
 */
 :- module(graf, [ classify/2, line_term/2, check_text/2, allow/2,
-                  kind/2, kname/2, sample/1, roundtrip/2 ]).
+                  kind/2, kname/2, sample/1, roundtrip/2, know_text/2 ]).
 
 /* ===================== 1. Разбор и порождение строки ===================== */
 
@@ -38,6 +38,7 @@ line(dep(A, B, T))        --> "связь", ws1, before(A, "->"), before(B, ":")
 line(callout(K, P, T))    --> callout_kw(K), pos(P), colon, rest(T).
 line(image(T))            --> "рисунок", colon, rest(T).
 line(code(T))             --> "код", colon, rest(T).
+line(query(T))            --> "запрос", colon, rest(T).
 line(item(T))             --> dash, ws1, rest(T).
 line(nitem(N, T))         --> num(N), ( "." ; ")" ), ws1, rest(T).
 line(marker(T))           --> star, ws1, rest(T).
@@ -46,7 +47,7 @@ line(pair(L, R))          --> before(L, "><"), rest(R).
 line(memo(P, T))          --> before(P, "->"), rest(T).
 line(text(T))             --> rest(T).
 
-optkey(K) --> { member(K, ['схема', 'ширина', 'нумерация', 'класс', 'язык']),
+optkey(K) --> { member(K, ['схема', 'ширина', 'нумерация', 'класс', 'язык', 'режим']),
                 atom_codes(K, Cs) }, lit(Cs).
 
 callout_kw(выноска)   --> "выноска".
@@ -83,7 +84,12 @@ rest(T, S0, []) :-
 % before(T, Sep): текст до первого разделителя Sep (сам Sep съедается).
 before(T, Sep, S0, S) :- nonvar(T), !,
     string_codes(T, Cs), string_codes(Sep, SC),
-    append(Cs, [0'\s|T1], S0), append(SC, [0'\s|S], T1).
+    gap_before(Sep, G),
+    append([Cs, G, SC, [0'\s]], Out), append(Out, S, S0).
+
+% пробел перед разделителем: «a -> b», «a >< b», но «b: текст»
+gap_before(":", []) :- !.
+gap_before(_, [0'\s]).
 before(T, Sep, S0, S) :-
     string_codes(Sep, SC),
     append(L, Rest, S0), append(SC, S, Rest), !,
@@ -118,7 +124,7 @@ kname(rule, 'правило:').      kname(example, 'пример:').  kname(arr
 kname(image, 'рисунок:').     kname(code, 'код').         kname(callout, 'выноска:').
 kname(marker, 'маркер *').    kname(bar, 'черта |').      kname(brace, 'скобка }').
 kname(formula, 'формула $$'). kname(dep, 'связь').        kname(text, 'текст').
-kname(root, root).
+kname(query, 'запрос:').    kname(root, root).
 
 /* ===================== 3. Что может стоять внутри чего ===================== */
 % Таблица ALLOW из parser.js, записанная фактами: allow(Родитель, Ребёнок).
@@ -210,6 +216,7 @@ sample(T) :- member(T, [
     pair("числитель", "знаменатель"),
     memo("Что такое дробь", "Это часть целого."),
     text("Просто текст"),
+    query("кто предок Анны"),
     opt('класс', "6")
   ]).
 
@@ -217,3 +224,170 @@ sample(T) :- member(T, [
 roundtrip(T, R) :-
     line_term(L, T), classify(L, T2),
     ( T2 =@= T -> R = ok(L) ; R = differs(L, T2) ).
+
+/* ===================== 6. Режим знаний: ГРАФ → Prolog ===================== */
+/*  Решения 15.11 (учитель):
+      А -> ?                        — переменная: запоминатель с пустым ответом;
+      кто, что, кого …              — в запросе переменные сами по себе;
+      связь Иван -> Пётр: родитель  — факт родитель(иван, петр);
+      правило: А предок В, если А родитель Б и Б предок В;
+      пример: / контрпример:        — тесты: выводится / не выводится;
+      запрос: кто предок Анны       — ответ запоминателями «кто -> Пётр».
+    Упрощения пробы: только отношения двух участников («кто отношение кого»),
+    без «или» и «не»; падежи сводятся простым сравнением основ (Анны ~ Анна).
+*/
+:- dynamic kb_clause/2, kb_entity/2.
+
+% знания: текст конспекта → строки отчёта (Prolog, проверки, ответы)
+know_text(Text, Lines) :-
+    text_terms(Text, Terms),
+    clear_kb,
+    var_names(Terms, Vars),
+    load_facts(Terms),
+    load_rules(Vars, Terms, RuleErrs),
+    mode_warning(Terms, Warn),
+    prolog_listing(PL),
+    run_checks(Vars, Terms, Out),
+    append([Warn, ["— Prolog —"], PL, RuleErrs, ["— Проверки и запросы —"], Out], Lines).
+
+% строки: текст → термы строк
+text_terms(Text, Terms) :-
+    split_string(Text, "\n", "", Ls0), include(meaningful, Ls0, Ls),
+    maplist(classify, Ls, Terms).
+
+% очистить: пустая база знаний
+clear_kb :- retractall(kb_clause(_, _)), retractall(kb_entity(_, _)).
+
+% режим: напомнить, если нет строки «режим: знания»
+mode_warning(Terms, []) :- memberchk(opt('режим', "знания"), Terms), !.
+mode_warning(_, ["нет строки «режим: знания» — конспект прочитан как база знаний для пробы"]).
+
+% переменные: указатели запоминателей с пустым ответом
+var_names(Terms, Vars) :- findall(N, (member(memo(P, "?"), Terms), norm(P, N)), Vars).
+
+% вопрос: слова, которые в запросе сами — переменные
+question_word(W) :- memberchk(W, ["кто", "что", "кого", "чего", "какой", "какая", "какое", "где"]).
+
+% норма: строчные буквы, ё → е, без крайних пробелов
+norm(S, N) :-
+    string_lower(S, L), split_string(L, "ё", "", Ps),
+    atomic_list_concat(Ps, 'е', A), atom_string(A, N0), split_string(N0, "", " ", [N]).
+
+% основа: без одной-двух гласных на конце (Анны, Анна → анн)
+stem(S, T) :- drop_vowel(S, S1), drop_vowel(S1, T).
+drop_vowel(S, T) :-
+    string_length(S, L), L > 3, sub_string(S, _, 1, 0, C),
+    sub_string("аяьйоеыиу", _, 1, _, C), !, sub_string(S, 0, _, 1, T).
+drop_vowel(S, S).
+
+% участник: имя → атом, запоминаем, как писать в ответе
+entity(Name, Atom) :-
+    norm(Name, N), atom_string(Atom, N),
+    ( kb_entity(Atom, _) -> true ; assertz(kb_entity(Atom, Name)) ).
+
+% найти участника по слову в любом падеже
+entity_atom(N, A) :- atom_string(A0, N), kb_entity(A0, _), !, A = A0.
+entity_atom(N, A) :- stem(N, SN), kb_entity(A, _), atom_string(A, AS), stem(AS, SN), !.
+entity_atom(N, A) :- atom_string(A, N).
+
+% факты: «связь А -> Б: отношение»
+load_facts(Terms) :- forall(member(dep(A, B, R), Terms), add_fact(A, B, R)).
+add_fact(A, B, R) :-
+    entity(A, EA), entity(B, EB), norm(R, RN), atom_string(RA, RN),
+    assertz(kb_clause(r(RA, EA, EB), true)).
+
+% правила: «голова, если условие и условие»
+load_rules(Vars, Terms, Errs) :-
+    findall(E, ( member(rule(T), Terms), \+ add_rule(Vars, T),
+                 format(string(E), "не понято правило: ~w", [T]) ), Errs).
+add_rule(Vars, T) :-
+    clean(T, C), split_if(C, HS, BS),
+    phrase_goal(Vars, HS, [], M1, H), body_goals(Vars, BS, M1, _, B),
+    assertz(kb_clause(H, B)).
+
+% если: делит правило на голову и условия
+split_if(T, H, B) :-
+    once(sub_string(T, Bef, _, Aft, ", если ")),
+    sub_string(T, 0, Bef, _, H), sub_string(T, _, Aft, 0, B).
+
+body_goals(Vars, S, M0, M, Body) :-
+    atomic_list_concat(Parts, ' и ', S),
+    parts_goals(Vars, Parts, Gs, M0, M), conj(Gs, Body).
+
+% условия: части «… и …» → цели, переменные общие на всё правило
+parts_goals(_, [], [], M, M).
+parts_goals(Vars, [P|Ps], [G|Gs], M0, M) :-
+    atom_string(P, PS), phrase_goal(Vars, PS, M0, M1, G),
+    parts_goals(Vars, Ps, Gs, M1, M).
+
+% связать: список целей → «цель, цель, …»
+conj([G], G) :- !.
+conj([G|Gs], (G, R)) :- conj(Gs, R).
+
+% фраза: «кто отношение кого» → r(отношение, Кто, Кого)
+phrase_goal(Vars, S, M0, M, r(R, X, Y)) :-
+    split_string(S, " ", " ", Ws0), exclude(==(""), Ws0, [W1, W2, W3]),
+    word_term(Vars, W1, M0, M1, X), norm(W2, RN), atom_string(R, RN),
+    word_term(Vars, W3, M1, M, Y).
+
+% слово: переменная или участник
+word_term(Vars, W, M0, M, T) :-
+    norm(W, N),
+    (   ( memberchk(N, Vars) ; question_word(N) )
+    ->  ( memberchk(N-T, M0) -> M = M0 ; M = [N-T|M0] )
+    ;   entity_atom(N, T), M = M0
+    ).
+
+% очистить: без крайних пробелов и знаков .?!
+clean(T, C) :- split_string(T, "", " .?!", [C]).
+
+% вывод: поиск по правилам с ограничением глубины
+prove(_, 0) :- !, fail.
+prove(true, _) :- !.
+prove((A, B), D) :- !, prove(A, D), prove(B, D).
+prove(G, D) :- D1 is D - 1, kb_clause(G, B), prove(B, D1).
+
+% Prolog: база знаний как обычный текст Prolog
+prolog_listing(PL) :-
+    findall(S, ( kb_clause(H, B), readable(H, B, C),
+                 with_output_to(string(S0), portray_clause(C)),
+                 split_string(S0, "", "\n ", [S]) ), PL).
+% читаемо: внутренний терм r(…) → обычное предложение Prolog
+readable(H, true, RH) :- !, real(H, RH).
+readable(H, B, (RH :- RB)) :- real(H, RH), real_body(B, RB).
+real(r(R, X, Y), T) :- T =.. [R, X, Y].
+real_body((A, B), (RA, RB)) :- !, real(A, RA), real_body(B, RB).
+real_body(A, RA) :- real(A, RA).
+
+% проверки: примеры, контрпримеры, запросы
+run_checks(Vars, Terms, Out) :-
+    findall(Ls, ( member(T, Terms), check_line(Vars, T, Ls) ), Lss), append(Lss, Out).
+check_line(Vars, example(plain, T), [L])   :- test_line(Vars, T, true, "пример", L).
+check_line(Vars, example(counter, T), [L]) :- test_line(Vars, T, false, "контрпример", L).
+check_line(Vars, query(T), Ls)             :- query_lines(Vars, T, Ls).
+
+% тест: пример должен выводиться, контрпример — нет
+test_line(Vars, T, Want, Kind, L) :-
+    (   clean(T, C), phrase_goal(Vars, C, [], _, G)
+    ->  ( once(prove(G, 50)) -> Got = true ; Got = false ),
+        ( Got == Want -> Mark = "✓" ; Mark = "✗" ),
+        ( Got == true -> Res = "выводится" ; Res = "не выводится" ),
+        format(string(L), "~w ~w: ~w — ~w", [Mark, Kind, T, Res])
+    ;   format(string(L), "✗ ~w: ~w — не понято", [Kind, T])
+    ).
+
+% запрос: все ответы — запоминателями «кто -> Иван»
+query_lines(Vars, T, Ls) :-
+    (   clean(T, C), phrase_goal(Vars, C, [], Map, G)
+    ->  findall(Ps, ( prove(G, 50), maplist(pair_disp, Map, Ps) ), As0),
+        list_to_set(As0, As),
+        answer_block(T, As, Ls)
+    ;   format(string(L), "запрос: ~w — не понято", [T]), Ls = [L]
+    ).
+% ответ: заголовок запроса и строки-запоминатели
+answer_block(T, [], [L]) :- !, format(string(L), "запрос: ~w — ответов нет", [T]).
+answer_block(T, As, [H|AL]) :-
+    format(string(H), "запрос: ~w", [T]),
+    findall(L, ( member(Ps, As), member(N-D, Ps), format(string(L), "    ~w -> ~w", [N, D]) ), AL).
+% показать: значение переменной так, как его написал учитель
+pair_disp(N-V, N-D) :- ( atom(V), kb_entity(V, D0) -> D = D0 ; term_string(V, D) ).
