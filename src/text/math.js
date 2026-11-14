@@ -34,7 +34,7 @@ function pretty(s){return String(s).replace(/(^|[^\\])->/g,'$1→').replace(/\\-
 
 // Формулы в пометках примера и в строке «Формула ->» набираются как выключные (\displaystyle): дробь, индексы и корень
 // не уменьшаются до размера индекса (задание 008). Включается на время раскладки: withDisp(() => …).
-let DISP=false;
+let DISP=false;const DISP_K=1.15; // масштаб выключных формул в пометках и в «Формула ->» (просьба учителя 14.11: «ещё чуть крупнее»)
 function withDisp(fn){const d=DISP;DISP=true;try{return fn();}finally{DISP=d;}}
 /** Высота формул строки над линией шрифта (a) и под ней (d), px при кегле size. */
 function mathVExt(s,size){let a=0,d=0;for(const ch of String(s))if(isMark(ch)){const f=markOf(ch);a=Math.max(a,f.asc*size);d=Math.max(d,(f.h-f.asc)*size);}return{a,d};}
@@ -59,7 +59,8 @@ function flatG(s){const st=[];return s.replace(/<g>|<g\s[^>]*>|<\/g>/g,t=>{if(t=
 function plain(s){const m=MJ;MJ=null;try{return pretty(s);}finally{MJ=m;}}
 /** Метка формулы для строки текста. */
 function mark(tex){let c=S.MKEY.get(tex);if(c)return c;
-  const f=fx(tex,false);const i=S.MATHS.length;S.MATHS.push({tex,...f});
+  const f=fx(tex,false);const i=S.MATHS.length;const k=/^\\displaystyle /.test(tex)?DISP_K:1; // выключные формулы — чуть крупнее текста
+  S.MATHS.push({tex,...f,w:f.w*k,h:f.h*k,asc:f.asc*k});
   if(f.err)S.WARN.push('Формула не разобрана: $'+tex+'$');
   c=String.fromCharCode(MARK0+i);S.MKEY.set(tex,c);return c;}
 const isMark=ch=>{const k=ch.charCodeAt(0);return k>=MARK0&&k<MARK0+0x800;};
