@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>ДРАКОН-ГРАФ на Prolog — эксперимент 1</title>
+<style>
+  body { font: 15px/1.45 "PT Serif", Georgia, serif; margin: 24px auto; max-width: 980px; padding: 0 16px; color: #222; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #666; margin: 0 0 16px; }
+  textarea { width: 100%; height: 220px; font: 14px/1.4 "PT Mono", monospace; box-sizing: border-box; }
+  button { font: inherit; padding: 6px 12px; margin: 8px 8px 8px 0; cursor: pointer; }
+  #status { font-size: 13px; color: #993300; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 14px; }
+  td, th { border: 1px solid #d8c8a8; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #ffff99; }
+  .ok { background: #eef8ee; } .bad { background: #fde8e8; }
+  code { font: 13px "PT Mono", monospace; }
+</style>
+</head>
+<body>
+<h1>ДРАКОН-ГРАФ на Prolog — эксперимент 1</h1>
+<p class="sub">Одно описание языка (graf.pl) разбирает, порождает и проверяет. Рядом — текущий JS-разбор для сравнения.</p>
+<p id="status">Загружаю SWI-Prolog…</p>
+
+<textarea id="src">тема: Дроби
+класс: 6
+связка: Что | Где | Когда
+Что такое дробь -> Это часть целого.
+  * числитель сверху
+  * знаменатель снизу
+  пример: 1/2 + 1/3 = 5/6
+числитель >< знаменатель
+правило: Знаменатель не равен нулю.
+стрелка: потому что
+- первый пункт
+2. второй пункт
+выноска снизу: Только для целых
+связь числитель -> дробь: делится на знаменатель
+рисунок: дробь.png
+код: print(1/2)
+| черта
+Просто текст
+связка: a | b
+  - пункт внутри связки</textarea>
+
+<div>
+  <button id="btnKinds">1. Сравнить разбор строк: JS и Prolog</button>
+  <button id="btnRound">2. Самопроверка: порождение → разбор</button>
+  <button id="btnCheck">3. Проверка вложенности: JS и Prolog</button>
+</div>
+<div id="out"></div>
+
+<script type="module">
+import { classify, parse } from './src/parse/parser.js';
+import { S } from './src/state.js';
+
+const SWIPL_URL = 'https://SWI-Prolog.github.io/npm-swipl-wasm/latest/index.js';
+let swipl = null;
+
+/* ---------- нижние слова: страница ---------- */
+
+// показать: пишет строку состояния
+function say(text) { document.getElementById('status').textContent = text; }
+
+// вывести: кладёт готовый HTML в область результата
+function show(html) { document.getElementById('out').innerHTML = html; }
+
+// экранировать: делает текст безопасным для HTML
+function esc(text) {
+  return String(text).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+// строки: непустые строки конспекта без комментариев
+function sourceLines() {
+  const text = document.getElementById('src').value;
+  return text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+}
+
+// таблица: строит таблицу из заголовков и строк [ячейки, ок?]
+function table(heads, rows) {
+  const th = heads.map(h => `<th>${esc(h)}</th>`).join('');
+  const tr = rows.map(([cells, ok]) =>
+    `<tr class="${ok ? 'ok' : 'bad'}">${cells.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+  return `<table><tr>${th}</tr>${tr}</table>`;
+}
+
+/* ---------- нижние слова: Prolog ---------- */
+
+// загрузить скрипт: подключает swipl-wasm с сайта SWI-Prolog
+function loadScript(url) {
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = ok; s.onerror = () => fail(new Error('не загрузился ' + url));
+    document.head.appendChild(s);
+  });
+}
+
+// спросить: один ответ Prolog на запрос с входными данными
+function ask(goal, input) { return swipl.prolog.query(goal, input).once(); }
+
+// текст: превращает значение Prolog (строку, атом) в строку JS
+function str(value) { return value == null ? '' : String(value); }
+
+/* ---------- средние слова ---------- */
+
+// поднять Prolog: загружает SWI-Prolog и файл языка graf.pl
+async function startProlog() {
+  await loadScript(SWIPL_URL);
+  swipl = await SWIPL({ arguments: ['-q'] });
+  const program = await (await fetch('graf.pl')).text();
+  swipl.FS.writeFile('/graf.pl', program);
+  ask("consult('/graf.pl')");
+}
+
+// вид в JS: что думает текущий JS-разбор о строке
+function jsKind(line) { return classify(line).kind; }
+
+// вид в Prolog: что думает graf.pl о строке, и терм целиком
+function plKind(line) {
+  const a = ask('graf:classify(L, T), graf:kind(T, K), term_string(T, S)', { L: line });
+  return a ? { kind: str(a.K), term: str(a.S) } : { kind: '—', term: 'не разобрано' };
+}
+
+// ошибки JS: подсказки о вложенности из текущего JS-разбора
+function jsNestErrors(text) {
+  S.WARN.length = 0;
+  parse(text);
+  return S.WARN.filter(w => w.includes('не может стоять'));
+}
+
+// ошибки Prolog: то же самое из graf.pl
+function plNestErrors(text) {
+  const a = ask('graf:check_text(Tx, Es)', { Tx: text });
+  return a ? a.Es.map(str) : ['Prolog не смог разобрать текст'];
+}
+
+/* ---------- верхние слова: три проверки ---------- */
+
+// сравнить виды: строка за строкой, JS против Prolog
+function compareKinds() {
+  const rows = sourceLines().map(line => {
+    const js = jsKind(line), pl = plKind(line);
+    return [[esc(line), esc(js), esc(pl.kind), `<code>${esc(pl.term)}</code>`], js === pl.kind];
+  });
+  const same = rows.filter(r => r[1]).length;
+  say(`Совпало ${same} из ${rows.length}.`);
+  show(table(['Строка', 'JS', 'Prolog', 'Терм Prolog'], rows));
+}
+
+// самопроверка: Prolog порождает строки и сам их разбирает обратно
+function roundTrip() {
+  const a = ask('findall(R, (graf:sample(T), graf:roundtrip(T, R0), term_string(R0, R)), Rs)');
+  const rows = a.Rs.map(str).map(r => [[`<code>${esc(r)}</code>`], r.startsWith('ok(')]);
+  const good = rows.filter(r => r[1]).length;
+  say(`Порождение → разбор: ${good} из ${rows.length} вернулись тем же термом.`);
+  show(table(['Итог (ok(строка) — совпало)'], rows));
+}
+
+// проверить вложенность: ошибки отступов в JS и в Prolog
+function compareNesting() {
+  const text = sourceLines().length ? document.getElementById('src').value : '';
+  const js = jsNestErrors(text), pl = plNestErrors(text);
+  const same = JSON.stringify(js) === JSON.stringify(pl);
+  say(same ? 'Ошибки вложенности совпали.' : 'Ошибки вложенности различаются.');
+  show(table(['JS', 'Prolog'], [[[esc(js.join('\n') || 'нет'), esc(pl.join('\n') || 'нет')], same]]));
+}
+
+/* ---------- запуск ---------- */
+
+// подключить кнопки: каждая кнопка — одна проверка
+function wireButtons() {
+  document.getElementById('btnKinds').onclick = compareKinds;
+  document.getElementById('btnRound').onclick = roundTrip;
+  document.getElementById('btnCheck').onclick = compareNesting;
+}
+
+// начать: поднимает Prolog и включает кнопки
+async function start() {
+  const t0 = performance.now();
+  try {
+    await startProlog();
+    say(`SWI-Prolog готов за ${Math.round(performance.now() - t0)} мс. Нажмите кнопку.`);
+    wireButtons();
+  } catch (e) {
+    say('Не удалось запустить Prolog: ' + e.message);
+  }
+}
+
+start();
+</script>
+</body>
+</html>
