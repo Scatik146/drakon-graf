@@ -26,7 +26,7 @@
   - `node tools/konspekt.mjs --scan файл --class N` (конспект);
   - `node tools/drakon-shema.mjs --scan файл` (дракон-схема);
   - и смотреть рисунок в браузере.
-- Код (любой язык, кроме Prolog) — «по-фортовски»: teacher-workpad `docs/komanda/KOD-PO-FORTOVSKI.md`; Prolog — «по-графовски»: teacher-workpad `docs/komanda/KOD-PO-GRAFOVSKI.md`.
+- Код (любой язык, кроме Prolog) — «по-фортовски»: teacher-workpad `docs/komanda/KOD-PO-FORTOVSKI.md`; Prolog — «по-прологовски» (как описать): teacher-workpad `docs/komanda/KOD-PO-PROLOGOVSKI.md`, и «по-графовски» (как нарисовать): `docs/komanda/KOD-PO-GRAFOVSKI.md`.
 - Не придумывать синтаксис языка: справочники — `docs/graf/`, навык — `navyk/drakon-graf-konspekt.md`, канон ДРАКОНа — `docs/research/08_ДРАКОН_язык_разбор.md`.
 - Изменения — через ветку и Pull Request; учитель смотрит и сливает. Прямо в `main` пишет только Claude по прямой просьбе учителя.
 - Каждый новый источник записывать в `docs/литература.md`, каждое решение — в раздел 4 этого файла.
