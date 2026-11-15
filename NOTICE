@@ -33,3 +33,19 @@ src/text/metrics.js contains glyph advance widths and kerning values derived fro
 PT Serif and PT Mono (ParaType, SIL OFL 1.1) and advance widths of glyphs from
 Asana Math (A. Syropoulos, SIL OFL 1.1) and DejaVu Sans (Bitstream Vera Fonts
 license); no glyph outlines are included.
+
+---
+Сторонние компоненты стендов экспериментов (лежат без правок):
+- WAForth 0.20.1 — © 2018 Remko Tronçon, лицензия MIT
+  (site/experiments/forth/lib/LICENSE; https://github.com/remko/waforth).
+- swipl-wasm 8.3.0 (SWI-Prolog для WebAssembly) — авторы SWI-Prolog (Jan Wielemaker и др.),
+  упрощённая лицензия BSD (site/experiments/prolog/lib/LICENSE).
+Подробности и порядок обновления — docs/komanda/STORONNIE.md.
+
+При участии ИИ-помощников (инструменты, не правообладатели): Claude (Anthropic),
+Алиса (Яндекс), GLM (Zhipu AI), DeepSeek, Qwen (Alibaba Cloud).
+Правообладатель и ответственный — С. Н. Веснин.
+
+Third-party components in experiment stands (unmodified): WAForth 0.20.1 (MIT, © 2018 Remko Tronçon),
+swipl-wasm 8.3.0 (SWI-Prolog, Simplified BSD). Developed with the participation of AI assistants
+(tools, not rights holders): Claude (Anthropic), Alice (Yandex), GLM (Zhipu AI), DeepSeek, Qwen (Alibaba Cloud).
