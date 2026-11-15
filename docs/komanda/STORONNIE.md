@@ -69,7 +69,7 @@
 ## 2. Как обновлять чужое (правило 15.11)
 - Библиотеки лежат **замороженными на выбранной версии**; сами не обновляются (раньше Prolog брался как `latest` с сайта SWI-Prolog).
 - Проверять новые версии **раз в квартал** (следующая — **15.02.2027**; срок можно менять) и сразу, если что-то сломалось.
-- Порядок: скачать новую версию (`npm pack waforth`, `npm pack swipl-wasm`, новый файл DrakonWidget, Astronomy Engine…) → заменить файлы → **сначала тесты** (Forth: `node site/experiments/forth/run-node.cjs`, 20 из 20; Prolog: три кнопки стенда, 20/20, 20/20, 2/2; DrakonWidget: проба в `lib/drakon-shema/index.html` и `node tools/drakon-shema.mjs`; календарь: `npm test`) → обновить версию в этой таблице и в `NOTICE` → только потом коммит.
+- Порядок: скачать новую версию (`npm pack waforth`, `npm pack swipl-wasm`, новый файл DrakonWidget, Astronomy Engine…) → заменить файлы → **сначала тесты** (Forth: `node site/experiments/forth/run-node.cjs`, 20 из 20; Prolog: `python3 tools/prolog-stend.py` или кнопки стенда: «Совпало 20 из 20», «Порождение → разбор: 21 из 21», «Ошибки вложенности совпали», «Знания»: пример ✓, контрпример ✓; DrakonWidget: проба в `lib/drakon-shema/index.html` и `node tools/drakon-shema.mjs`; календарь: `npm test`) → обновить версию в этой таблице и в `NOTICE` → только потом коммит.
 - Если новая версия ломает тесты — остаёмся на старой, причину записываем в журнал (README § 4).
 - Копия JS-парсера в стенде Prolog (`site/experiments/prolog/src/`) обновляется отдельно, из корня репозитория, пока Prolog не заморожен (порог 20.12.2026).
 - Форки (skulpt, qumir): раз в квартал смотреть, нет ли у исходного проекта исправлений безопасности; сливать только после тестов.
