@@ -57,7 +57,7 @@
 import { classify, parse } from './src/parse/parser.js';
 import { S } from './src/state.js';
 
-const SWIPL_URL = 'https://SWI-Prolog.github.io/npm-swipl-wasm/latest/index.js';
+const SWIPL_URL = 'lib/swipl-web.js';   // swipl-wasm 8.3.0 лежит рядом, не из интернета
 let swipl = null;
 
 /* ---------- нижние слова: страница ---------- */
@@ -89,7 +89,7 @@ function table(heads, rows) {
 
 /* ---------- нижние слова: Prolog ---------- */
 
-// загрузить скрипт: подключает swipl-wasm с сайта SWI-Prolog
+// загрузить скрипт: подключает swipl-wasm из lib/ (рядом со страницей)
 function loadScript(url) {
   return new Promise((ok, fail) => {
     const s = document.createElement('script');
@@ -109,7 +109,7 @@ function str(value) { return value == null ? '' : String(value); }
 // поднять Prolog: загружает SWI-Prolog и файл языка graf.pl
 async function startProlog() {
   await loadScript(SWIPL_URL);
-  swipl = await SWIPL({ arguments: ['-q'] });
+  swipl = await SWIPL({ arguments: ['-q'], locateFile: (f) => 'lib/' + f });   // .wasm и .data лежат в lib/
   const program = await (await fetch('graf.pl')).text();
   swipl.FS.writeFile('/graf.pl', program);
   ask("consult('/graf.pl')");
