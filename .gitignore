@@ -7,3 +7,4 @@ dist/
 /fonts/
 *.tgz
 _site/
+__pycache__/
