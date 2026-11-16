@@ -1,1 +1,5 @@
-Задача: проверить работу DeepSeek по заданию 005 (подключение разборщика). Прочитай в Scatik146/drakon-graf `docs/komanda/SOSTOYANIE.md` и в Scatik146/teacher-workpad `docs/komanda/zadaniya/005-podklyuchenie-razborshchika.md`. Работаем по навыку «экономная сессия». Проверка тестами и командами, скриншот — один, последним. Готово, когда: принято / принято с доработками / вернуть — с таблицей замечаний для DeepSeek (как в 004б), оценка постановки — в конце задания, отправлено в GitHub. В конце обнови `docs/komanda/SOSTOYANIE.md` и одной строкой допиши итог в `docs/komanda/BRIFING.md` под 14.11 («Итоги рабочих чатов 14.11»). Последней строкой ответа в чате — та же строка итога в рамке «Для Алисы: …», чтобы учитель скопировал её не открывая файлов.
+# Переехало
+
+→ [ii-komanda/komanda/vstavka/den/2026-11-14/09-claude-opus-proverka-005.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/vstavka/den/2026-11-14/09-claude-opus-proverka-005.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

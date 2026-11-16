@@ -1,1 +1,5 @@
-Задача: <одна>. Прочитай `docs/komanda/SOSTOYANIE.md` и только файлы, названные здесь: … Работаем по навыку «экономная сессия». Готово, когда: … В конце обнови `SOSTOYANIE.md` и одной строкой допиши итог в `BRIFING.md` под сегодняшней датой.
+# Переехало
+
+→ [ii-komanda/komanda/vstavka/claude/02-rabochij-chat.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/vstavka/claude/02-rabochij-chat.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

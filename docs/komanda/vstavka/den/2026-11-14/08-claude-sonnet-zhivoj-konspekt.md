@@ -1,1 +1,5 @@
-Задача: наполнить репозиторий Scatik146/zhivoj-konspekt (учитель создал пустым). Прочитай в Scatik146/drakon-graf `docs/komanda/SOSTOYANIE.md`. Работаем по навыку «экономная сессия». Перенести `docs/project/ТЗ_Живой_учебник.md`, `docs/research/10*` и `11*` (с историей не возиться — копия + строка «перенесено из drakon-graf 14.11»), `README.md` редактора (что это, ветки, ссылки на drakon-graf), в drakon-graf на старых местах — ссылки. Попутно поправь в разборе 10: 14.11 репозитория `QumirLabs/qumir-service` нет (у QumirLabs — `qumir`, `qumirdb`, `.github`; сервис — каталог `service/` в `resetius/qumir`); свою копию сервиса поднимать из него. Готово, когда: оба репозитория отправлены в GitHub, ссылки работают. В конце обнови `docs/komanda/SOSTOYANIE.md` и одной строкой допиши итог в `docs/komanda/BRIFING.md` под 14.11 («Итоги рабочих чатов 14.11»). Последней строкой ответа в чате — та же строка итога в рамке «Для Алисы: …», чтобы учитель скопировал её не открывая файлов.
+# Переехало
+
+→ [ii-komanda/komanda/vstavka/den/2026-11-14/08-claude-sonnet-zhivoj-konspekt.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/vstavka/den/2026-11-14/08-claude-sonnet-zhivoj-konspekt.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

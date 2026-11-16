@@ -1,3 +1,5 @@
-Задача: скрипт `tools/ii.py` в `Scatik146/ii-komanda` — рассылка промптов моделям и запись ответов в файлы. Прочитай `ii-komanda/AVTOMATIZACIYA.md`, `istochniki/uroki/2026-11-01-proplain.md` (исходная постановка), `uroki/ALGORITM.md`. Работаем по навыку «экономная сессия».
+# Переехало
 
-Условия: Windows и GitHub Actions; Python, только стандартная библиотека; модели через OpenAI-совместимые API (DeepSeek, Yandex AI Studio, GLM, Qwen; агрегатор — по желанию); ключи в переменных окружения или `.env` вне git; параллельный и последовательный запуск; сбой пишется явно «ОТВЕТ НЕРАБОЧИЙ: пусто / отказ / обрезан / ошибка сети». Адреса и форматы API проверять по официальной документации, не выдумывать. Готово, когда: скрипт, `tools/models.json` (пример без ключей), README с установкой для Windows, тест без сети (заглушка API), workflow `ii.yml` (запуск вручную); итог одной строкой в `BRIFING.md` drakon-graf.
+→ [ii-komanda/komanda/vstavka/den/2026-11-13/7-claude-skript-ii.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/vstavka/den/2026-11-13/7-claude-skript-ii.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

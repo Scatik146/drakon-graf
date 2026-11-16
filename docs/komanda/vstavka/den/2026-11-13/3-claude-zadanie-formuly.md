@@ -1,1 +1,5 @@
-Задача: написать задание 002 для Qwen — тестовый набор формул для генератора конспектов (школьные формулы по математике 5–11 и физике, в том числе образец из физики; ожидаемый вид каждой). Прочитай в репозитории Scatik146/drakon-graf `docs/komanda/SOSTOYANIE.md`, шаблон teacher-workpad `docs/komanda/zadaniya/SHABLON.md` и в генераторе только разбор формул (`src/mathjax.js`, по grep). Работаем по навыку «экономная сессия». Готово, когда: файл teacher-workpad `docs/komanda/zadaniya/002-test-formul.md` по шаблону, проверка — GLM. В конце обнови `SOSTOYANIE.md` и одной строкой допиши итог в `BRIFING.md` под 13.11.
+# Переехало
+
+→ [ii-komanda/komanda/vstavka/den/2026-11-13/3-claude-zadanie-formuly.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/vstavka/den/2026-11-13/3-claude-zadanie-formuly.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

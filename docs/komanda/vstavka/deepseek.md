@@ -1,3 +1,5 @@
-DeepSeek работает не в чате, а через GitHub — вставлять ничего не надо:
-GitHub → репозиторий teacher-workpad → Actions → «DeepSeek: выполнить задание» → Run workflow → указать файл задания (`docs/komanda/zadaniya/NNN-….md`).
-Через пару минут появится Pull Request; его проверяет GLM (файл `glm-recenzent.md`), сливаете вы.
+# Переехало
+
+→ [ii-komanda/prompty/roli/deepseek.md](https://github.com/Scatik146/ii-komanda/blob/main/prompty/roli/deepseek.md)
+
+Старое место оставлено до брифинга после миграции (окно отката).

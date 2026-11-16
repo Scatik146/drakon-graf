@@ -40,7 +40,7 @@ license); no glyph outlines are included.
   (site/experiments/forth/lib/LICENSE; https://github.com/remko/waforth).
 - swipl-wasm 8.3.0 (SWI-Prolog для WebAssembly) — авторы SWI-Prolog (Jan Wielemaker и др.),
   упрощённая лицензия BSD (site/experiments/prolog/lib/LICENSE).
-Подробности и порядок обновления — docs/komanda/STORONNIE.md.
+Подробности и порядок обновления — docs/STORONNIE.md.
 
 При участии ИИ-помощников (инструменты, не правообладатели): Claude (Anthropic),
 Алиса (Яндекс), GLM (Zhipu AI), DeepSeek, Qwen (Alibaba Cloud).
