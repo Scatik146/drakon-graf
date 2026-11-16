@@ -1,5 +1,4 @@
 # Переехало
 
-→ [ii-komanda/komanda/README.md](https://github.com/Scatik146/ii-komanda/blob/main/komanda/README.md)
-
-Старое место оставлено до брифинга после миграции (окно отката).
+Рабочие файлы команды (брифинг, состояние, журнал решений, правила, задания) — в ii-komanda `komanda/`, `pravila/`.
+Проверка ii-komanda: `komanda/migraciya/opis.md`.
