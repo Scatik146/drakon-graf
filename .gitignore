@@ -8,3 +8,4 @@ dist/
 *.tgz
 _site/
 __pycache__/
+package-lock.json
