@@ -10,7 +10,7 @@
 | Что | Версия | Автор / правообладатель | Лицензия | Где лежит |
 |---|---|---|---|---|
 | WAForth (Forth на WebAssembly) | 0.20.1 | Remko Tronçon, © 2018 | MIT | `site/experiments/forth/lib/`, https://github.com/remko/waforth |
-| swipl-wasm (SWI-Prolog для WebAssembly) | 8.3.0 (версию SWI-Prolog внутри не выясняли) | авторы SWI-Prolog (Jan Wielemaker и др.) | упрощённая BSD | `site/experiments/prolog/lib/` |
+| swipl-wasm (SWI-Prolog для WebAssembly) | пакет 8.3.0; внутри SWI-Prolog 10.1.20 (флаг `version`, проверено 18.11.2026) | авторы SWI-Prolog (Jan Wielemaker и др.) | упрощённая BSD | `site/experiments/prolog/lib/` |
 | Шрифты PT Serif, PT Mono | — | ПараТайп (А. Королькова, О. Умпелева, В. Ефимов) | SIL OFL 1.1 | `graf/fonts/` |
 | Шрифт Asana Math | — | А. Сиропулос | SIL OFL 1.1 | `graf/fonts/` |
 | Ширины глифов DejaVu Sans (только числа, не контуры) | — | Bitstream / DejaVu | Bitstream Vera | `src/text/metrics.js` |
